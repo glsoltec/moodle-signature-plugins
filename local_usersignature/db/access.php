@@ -1,0 +1,15 @@
+<?php
+defined('MOODLE_INTERNAL') || die();
+
+$capabilities = [
+    'local/usersignature:manage' => [
+        'captype'      => 'write',
+        'contextlevel' => CONTEXT_USER,
+        'archetypes'   => [
+            'user'           => CAP_ALLOW,
+            'teacher'        => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager'        => CAP_ALLOW,
+        ],
+    ],
+];

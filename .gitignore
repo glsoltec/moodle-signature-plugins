@@ -1,0 +1,12 @@
+# Moodle
+config.php
+moodledata/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

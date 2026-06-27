@@ -124,7 +124,7 @@ function local_usersignature_extend_navigation_user(
  * Chamado no menu de configurações do perfil (Moodle 4.x e 5.x).
  */
 function local_usersignature_extend_navigation_user_settings(
-    \settings_navigation $nav,
+    \navigation_node $nav,
     \context_user $context
 ): void {
     global $USER;

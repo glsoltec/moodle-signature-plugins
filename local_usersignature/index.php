@@ -33,7 +33,10 @@ const SIGNATURE_FONTS = [
 ];
 
 // ─── Processar exclusão ───────────────────────────────────────────────────────
-if ($delete && confirm_sesskey()) {
+// require_sesskey() lança exceção se a sesskey for inválida (falha visível),
+// ao contrário de confirm_sesskey() que ignoraria silenciosamente.
+if ($delete) {
+    require_sesskey();
     $fs = get_file_storage();
     $fs->delete_area_files($context->id, 'local_usersignature', 'signature');
     $DB->delete_records('local_usersignature', ['userid' => $userid]);
@@ -115,6 +118,12 @@ $current_url   = local_usersignature_get_signature_url($userid);
 $default_text  = $meta['text'] ?: fullname($user);
 $selected_font = $meta['font'] ?: 'dancing';
 
+// Cache-buster: força o navegador a recarregar a imagem após salvar.
+// Sem isto, a URL fixa (itemid 0) é servida do cache e a alteração não aparece.
+$current_src = $current_url
+    ? $current_url->out(false, ['rev' => $meta['timemodified']])
+    : '';
+
 // ─── Renderizar ───────────────────────────────────────────────────────────────
 echo $OUTPUT->header();
 ?>
@@ -170,7 +179,7 @@ echo $OUTPUT->header();
     <?php if ($current_url): ?>
     <p class="sig-section-label"><?= get_string('currentsignature', 'local_usersignature') ?></p>
     <div class="sig-current">
-        <img src="<?= s($current_url->out()) ?>" alt="<?= s(get_string('currentsignature', 'local_usersignature')) ?>">
+        <img src="<?= s($current_src) ?>" alt="<?= s(get_string('currentsignature', 'local_usersignature')) ?>">
     </div>
     <?php endif ?>
 

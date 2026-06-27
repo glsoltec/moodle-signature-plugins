@@ -32,9 +32,37 @@ function local_usersignature_get_signature_meta(int $userid): array {
     global $DB;
     $record = $DB->get_record('local_usersignature', ['userid' => $userid]);
     if (!$record) {
-        return ['font' => '', 'text' => ''];
+        return ['font' => '', 'text' => '', 'timemodified' => 0];
     }
-    return ['font' => $record->font_style, 'text' => $record->signature_text];
+    return [
+        'font'         => $record->font_style,
+        'text'         => $record->signature_text,
+        'timemodified' => (int) $record->timemodified,
+    ];
+}
+
+/**
+ * Retorna a assinatura como Data URI base64 (data:image/png;base64,...).
+ *
+ * Necessário para o PDF do certificado: o mPDF renderiza no servidor e NÃO
+ * consegue baixar a URL do pluginfile (protegida por require_login). Embutir
+ * a imagem em base64 garante que ela apareça no certificado.
+ *
+ * @param int $userid
+ * @return string Data URI, ou '' se não houver assinatura.
+ */
+function local_usersignature_get_signature_datauri(int $userid): string {
+    $context = \core\context\user::instance($userid, IGNORE_MISSING);
+    if (!$context) {
+        return '';
+    }
+    $fs    = get_file_storage();
+    $files = $fs->get_area_files($context->id, 'local_usersignature', 'signature', 0, 'timemodified DESC', false);
+    if (empty($files)) {
+        return '';
+    }
+    $file = reset($files);
+    return 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content());
 }
 
 /**

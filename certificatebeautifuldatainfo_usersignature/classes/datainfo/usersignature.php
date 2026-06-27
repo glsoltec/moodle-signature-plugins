@@ -32,17 +32,24 @@ class usersignature extends help_base {
     }
 
     public static function get_data($course, $user): array {
-        $url  = local_usersignature_get_signature_url((int) $user->id);
-        $meta = local_usersignature_get_signature_meta((int) $user->id);
+        $userid = (int) $user->id;
 
-        $has        = ($url !== null);
-        $url_string = $has ? $url->out() : '';
+        // Data URI base64: indispensável para o mPDF, que renderiza no servidor
+        // e não consegue baixar a URL protegida do pluginfile.
+        $datauri = local_usersignature_get_signature_datauri($userid);
+        $has     = ($datauri !== '');
+
+        // URL pública mantida para usos web (não usada no PDF).
+        $url        = local_usersignature_get_signature_url($userid);
+        $url_string = ($url !== null) ? $url->out() : '';
+
+        $meta = local_usersignature_get_signature_meta($userid);
 
         $img_tag = '';
         if ($has) {
             $img_tag = sprintf(
                 '<img src="%s" alt="%s" style="max-height:60px;width:auto;display:block;margin:0 auto;">',
-                htmlspecialchars($url_string, ENT_QUOTES),
+                $datauri,
                 htmlspecialchars(get_string('mysignature', 'local_usersignature') . ' — ' . fullname($user), ENT_QUOTES)
             );
         }

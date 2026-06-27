@@ -93,28 +93,65 @@ function local_usersignature_pluginfile(
 }
 
 /**
- * Adiciona o link "Minha Assinatura" ao menu de perfil do usuário.
- * Chamado na página de perfil (/user/profile.php).
+ * Verifica se o usuário atual pode gerenciar a assinatura de $user.
+ */
+function local_usersignature_can_manage(\stdClass $user, \context_user $context): bool {
+    global $USER;
+    return $USER->id == $user->id || has_capability('moodle/user:editprofile', $context);
+}
+
+/**
+ * Adiciona o link "Minha Assinatura" à navegação do PERFIL do usuário.
+ * Callback chamado na página de perfil (/user/profile.php).
+ *
+ * Assinatura conforme Navigation API do Moodle 5.x:
+ * https://moodledev.io/docs/5.1/apis/core/navigation
  */
 function local_usersignature_extend_navigation_user(
-    \navigation_node $navigation,
+    \navigation_node $parentnode,
     \stdClass $user,
-    \context_user $context
+    \context_user $context,
+    \stdClass $course,
+    \context_course $coursecontext
 ): void {
-    global $USER;
-
-    if ($USER->id != $user->id && !has_capability('moodle/user:editprofile', $context)) {
+    if (!local_usersignature_can_manage($user, $context)) {
         return;
     }
 
-    $url  = new \moodle_url('/local/usersignature/index.php', ['userid' => $user->id]);
-    $node = \navigation_node::create(
+    $parentnode->add(
         get_string('mysignature', 'local_usersignature'),
-        $url,
+        new \moodle_url('/local/usersignature/index.php', ['userid' => $user->id]),
         \navigation_node::TYPE_SETTING,
         null,
         'local_usersignature',
         new \pix_icon('i/edit', '')
     );
-    $navigation->add_node($node);
+}
+
+/**
+ * Adiciona o link "Minha Assinatura" ao menu de PREFERÊNCIAS/CONFIGURAÇÕES do usuário.
+ * Callback chamado em /user/preferences.php.
+ *
+ * IMPORTANTE: o primeiro parâmetro é navigation_node (NÃO settings_navigation).
+ * Type hint incorreto causa o TypeError em settings_navigation.php:1434 no Moodle 5.x.
+ */
+function local_usersignature_extend_navigation_user_settings(
+    \navigation_node $parentnode,
+    \stdClass $user,
+    \context_user $context,
+    \stdClass $course,
+    \context_course $coursecontext
+): void {
+    if (!local_usersignature_can_manage($user, $context)) {
+        return;
+    }
+
+    $parentnode->add(
+        get_string('mysignature', 'local_usersignature'),
+        new \moodle_url('/local/usersignature/index.php', ['userid' => $user->id]),
+        \navigation_node::TYPE_SETTING,
+        null,
+        'local_usersignature',
+        new \pix_icon('i/edit', '')
+    );
 }

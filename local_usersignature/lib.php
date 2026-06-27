@@ -118,31 +118,3 @@ function local_usersignature_extend_navigation_user(
     );
     $navigation->add_node($node);
 }
-
-/**
- * Adiciona o link "Minha Assinatura" à navegação de configurações do usuário.
- * Chamado no menu de configurações do perfil (Moodle 4.x e 5.x).
- */
-function local_usersignature_extend_navigation_user_settings(
-    $nav,
-    \context_user $context
-): void {
-    global $USER;
-
-    $user = \core_user::get_user($context->instanceid, '*', MUST_EXIST);
-
-    if ($USER->id != $user->id && !has_capability('moodle/user:editprofile', $context)) {
-        return;
-    }
-
-    $url  = new \moodle_url('/local/usersignature/index.php', ['userid' => $user->id]);
-    $node = $nav->add(
-        get_string('mysignature', 'local_usersignature'),
-        $url,
-        \navigation_node::TYPE_SETTING,
-        null,
-        'local_usersignature',
-        new \pix_icon('i/edit', '')
-    );
-    $node->showinflatnavigation = true;
-}

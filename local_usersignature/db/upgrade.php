@@ -9,15 +9,20 @@ function xmldb_local_usersignature_upgrade(int $oldversion): bool {
     global $DB;
     $dbman = $DB->get_manager();
 
-    // Exemplo de migração futura:
-    // if ($oldversion < 2025060100) {
-    //     $table = new xmldb_table('local_usersignature');
-    //     $field = new xmldb_field('new_column', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
-    //     if (!$dbman->field_exists($table, $field)) {
-    //         $dbman->add_field($table, $field);
-    //     }
-    //     upgrade_plugin_savepoint(true, 2025060100, 'local', 'usersignature');
-    // }
+    // 2.1.0 — troca das fontes (Google Fonts → fontes locais) e novo padrão.
+    if ($oldversion < 2026070200) {
+        // Novo default do campo font_style.
+        $table = new xmldb_table('local_usersignature');
+        $field = new xmldb_field('font_style', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, 'autography');
+        $dbman->change_field_default($table, $field);
+
+        // Migra assinaturas com fontes antigas para a nova fonte padrão.
+        // O PNG salvo continua válido; ao regravar, o usuário usa as novas fontes.
+        list($insql, $params) = $DB->get_in_or_equal(['aerotis', 'autography', 'creata', 'tomatoes'], SQL_PARAMS_QM, 'param', false);
+        $DB->set_field_select('local_usersignature', 'font_style', 'autography', "font_style $insql", $params);
+
+        upgrade_plugin_savepoint(true, 2026070200, 'local', 'usersignature');
+    }
 
     return true;
 }

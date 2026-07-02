@@ -25,12 +25,16 @@ if ($userid != $USER->id) {
 
 // ─── Fontes disponíveis ───────────────────────────────────────────────────────
 // [slug => [label, family CSS, tamanho base px, cor hex]]
+// Arquivos correspondentes em local/usersignature/fonts/ (ver 'file').
 const SIGNATURE_FONTS = [
-    'dancing'    => ['label' => 'Dancing Script', 'family' => "'Dancing Script', cursive",  'size' => 52, 'color' => '#1a3a5c'],
-    'greatvibes' => ['label' => 'Great Vibes',    'family' => "'Great Vibes', cursive",      'size' => 58, 'color' => '#2c4a1e'],
-    'satisfy'    => ['label' => 'Satisfy',         'family' => "'Satisfy', cursive",          'size' => 48, 'color' => '#3a1a1a'],
-    'caveat'     => ['label' => 'Caveat',          'family' => "'Caveat', cursive",           'size' => 54, 'color' => '#1a2a4a'],
+    'aerotis'    => ['label' => 'Aerotis',    'family' => "'Aerotis', cursive",    'file' => 'Aerotis',    'size' => 50, 'color' => '#1a3a5c'],
+    'autography' => ['label' => 'Autography', 'family' => "'Autography', cursive", 'file' => 'Autography', 'size' => 56, 'color' => '#2c4a1e'],
+    'creata'     => ['label' => 'Creata',     'family' => "'Creata', cursive",     'file' => 'Creata',     'size' => 48, 'color' => '#3a1a1a'],
+    'tomatoes'   => ['label' => 'Tomatoes',   'family' => "'Tomatoes', cursive",   'file' => 'Tomatoes',   'size' => 50, 'color' => '#1a2a4a'],
 ];
+
+// Fonte padrão para todos os usuários.
+const SIGNATURE_DEFAULT_FONT = 'autography';
 
 // ─── Processar exclusão ───────────────────────────────────────────────────────
 // require_sesskey() lança exceção se a sesskey for inválida (falha visível),
@@ -102,21 +106,28 @@ $PAGE->set_title(get_string('mysignature', 'local_usersignature'));
 $PAGE->set_heading(fullname($user));
 $PAGE->set_pagelayout('standard');
 
-// Google Fonts (cursivas) — carregadas antes do header para evitar FOUT.
-$PAGE->requires->css(new \moodle_url(
-    'https://fonts.googleapis.com/css2?'
-    . 'family=Dancing+Script:wght@700'
-    . '&family=Great+Vibes'
-    . '&family=Satisfy'
-    . '&family=Caveat:wght@700'
-    . '&display=swap'
-));
-
 // ─── Estado atual ─────────────────────────────────────────────────────────────
 $meta          = local_usersignature_get_signature_meta($userid);
 $current_url   = local_usersignature_get_signature_url($userid);
 $default_text  = $meta['text'] ?: fullname($user);
-$selected_font = $meta['font'] ?: 'dancing';
+$selected_font = $meta['font'] ?: SIGNATURE_DEFAULT_FONT;
+// Assinaturas antigas podem referenciar fontes removidas (dancing, greatvibes...).
+if (!array_key_exists($selected_font, SIGNATURE_FONTS)) {
+    $selected_font = SIGNATURE_DEFAULT_FONT;
+}
+
+// URLs das fontes locais empacotadas com o plugin (fonts/*.woff2 + *.ttf).
+$fontfaces = '';
+foreach (SIGNATURE_FONTS as $info) {
+    $woff2 = (new \moodle_url('/local/usersignature/fonts/' . $info['file'] . '.woff2'))->out(false);
+    $ttf   = (new \moodle_url('/local/usersignature/fonts/' . $info['file'] . '.ttf'))->out(false);
+    $fontfaces .= sprintf(
+        "@font-face { font-family: %s; src: url('%s') format('woff2'), url('%s') format('truetype'); font-display: swap; }\n",
+        trim(explode(',', $info['family'])[0]),
+        $woff2,
+        $ttf
+    );
+}
 
 // Cache-buster: força o navegador a recarregar a imagem após salvar.
 // Sem isto, a URL fixa (itemid 0) é servida do cache e a alteração não aparece.
@@ -128,6 +139,7 @@ $current_src = $current_url
 echo $OUTPUT->header();
 ?>
 <style>
+<?= $fontfaces ?>
 .sig-wrap           { max-width: 780px; margin: 0 auto; padding: 0 16px 48px; }
 .sig-section-label  { font-size: .92rem; font-weight: 600; color: #475569; margin: 24px 0 8px; }
 .sig-name-input     {
@@ -319,9 +331,12 @@ echo $OUTPUT->header();
         document.getElementById('sig-selectedfont').value = currentFont;
     });
 
-    // Aguardar fontes do Google carregarem antes do primeiro desenho.
-    if (document.fonts && document.fonts.ready) {
-        document.fonts.ready.then(drawAll);
+    // Forçar o carregamento das fontes locais (@font-face) antes do primeiro
+    // desenho: o canvas não dispara o download da fonte sozinho.
+    if (document.fonts && document.fonts.load) {
+        Promise.all(
+            Object.values(FONTS).map(f => document.fonts.load('40px ' + f.family))
+        ).then(drawAll).catch(drawAll);
     } else {
         setTimeout(drawAll, 800);
     }

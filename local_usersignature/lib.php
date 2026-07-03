@@ -134,13 +134,16 @@ function local_usersignature_can_manage(\stdClass $user, \context_user $context)
  *
  * Assinatura conforme Navigation API do Moodle 5.x:
  * https://moodledev.io/docs/5.1/apis/core/navigation
+ *
+ * SEM type hint em $course/$coursecontext: no perfil fora de curso o core
+ * passa core\context\system (não context_course) — hint estrito causa TypeError.
  */
 function local_usersignature_extend_navigation_user(
     \navigation_node $parentnode,
     \stdClass $user,
     \context_user $context,
-    \stdClass $course,
-    \context_course $coursecontext
+    $course,
+    $coursecontext
 ): void {
     if (!local_usersignature_can_manage($user, $context)) {
         return;
@@ -167,8 +170,8 @@ function local_usersignature_extend_navigation_user_settings(
     \navigation_node $parentnode,
     \stdClass $user,
     \context_user $context,
-    \stdClass $course,
-    \context_course $coursecontext
+    $course,
+    $coursecontext
 ): void {
     if (!local_usersignature_can_manage($user, $context)) {
         return;

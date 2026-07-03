@@ -12,3 +12,8 @@ Thumbs.db
 *.swp
 dist/
 .staging/
+
+# Fontes de terceiros sem licença de redistribuição (repo público) —
+# ficam só localmente e entram no ZIP gerado pelo build.ps1.
+local_usersignature/fonts/Aerotis.*
+local_usersignature/fonts/Autography.*

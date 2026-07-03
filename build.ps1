@@ -32,8 +32,14 @@ foreach ($p in $plugins) {
     Copy-Item -Recurse -Force (Join-Path $srcPath '*') $stageDir
 
     # Compacta a PASTA (não o conteúdo), garantindo o nome interno correto.
+    # Usa tar.exe (bsdtar) em vez de Compress-Archive: este último grava as
+    # entradas com "\" e o Moodle em Linux não consegue ler a estrutura
+    # ("Não foi possível detectar o tipo de plugin").
     $zipPath = Join-Path $dist $p.zip
-    Compress-Archive -Path $stageDir -DestinationPath $zipPath -Force
+    # Caminho absoluto: evita pegar o tar GNU do Git Bash, que não entende "C:".
+    $tarExe = Join-Path $env:SystemRoot 'System32\tar.exe'
+    & $tarExe -C $staging -a -cf $zipPath $p.folder
+    if ($LASTEXITCODE -ne 0) { throw "tar falhou para $($p.zip)" }
 
     Write-Host "OK  $($p.zip)  (pasta interna: $($p.folder)/)"
     Remove-Item -Recurse -Force $stageDir

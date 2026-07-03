@@ -2,6 +2,29 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
+ * Fontes de assinatura disponíveis.
+ * [slug => [label, family CSS, basename do arquivo, tamanho base px, cor hex]]
+ *
+ * Os arquivos são procurados em local/usersignature/fonts/ e em
+ * $CFG->dataroot/fonts/ (ver font.php).
+ */
+function local_usersignature_fonts(): array {
+    return [
+        'autography' => ['label' => 'Autography', 'family' => "'Autography', cursive", 'file' => 'Autography', 'size' => 56, 'color' => '#2c4a1e'],
+        'caveat'     => ['label' => 'Caveat',     'family' => "'Caveat', cursive",     'file' => 'Caveat',     'size' => 54, 'color' => '#1a2a4a'],
+        'sacramento' => ['label' => 'Sacramento', 'family' => "'Sacramento', cursive", 'file' => 'Sacramento', 'size' => 56, 'color' => '#3a1a1a'],
+        'aerotis'    => ['label' => 'Aerotis',    'family' => "'Aerotis', cursive",    'file' => 'Aerotis',    'size' => 50, 'color' => '#1a3a5c'],
+    ];
+}
+
+/**
+ * Slug da fonte padrão para todos os usuários.
+ */
+function local_usersignature_default_font(): string {
+    return 'autography';
+}
+
+/**
  * Retorna a URL pública da assinatura do usuário, ou null se não existir.
  */
 function local_usersignature_get_signature_url(int $userid): ?\moodle_url {

@@ -23,18 +23,9 @@ if ($userid != $USER->id) {
     require_capability('moodle/user:editprofile', $context);
 }
 
-// ─── Fontes disponíveis ───────────────────────────────────────────────────────
-// [slug => [label, family CSS, tamanho base px, cor hex]]
-// Arquivos correspondentes em local/usersignature/fonts/ (ver 'file').
-const SIGNATURE_FONTS = [
-    'autography' => ['label' => 'Autography', 'family' => "'Autography', cursive", 'file' => 'Autography', 'size' => 56, 'color' => '#2c4a1e'],
-    'caveat'     => ['label' => 'Caveat',     'family' => "'Caveat', cursive",     'file' => 'Caveat',     'size' => 54, 'color' => '#1a2a4a'],
-    'sacramento' => ['label' => 'Sacramento', 'family' => "'Sacramento', cursive", 'file' => 'Sacramento', 'size' => 56, 'color' => '#3a1a1a'],
-    'aerotis'    => ['label' => 'Aerotis',    'family' => "'Aerotis', cursive",    'file' => 'Aerotis',    'size' => 50, 'color' => '#1a3a5c'],
-];
-
-// Fonte padrão para todos os usuários.
-const SIGNATURE_DEFAULT_FONT = 'autography';
+// ─── Fontes disponíveis (mapa definido em lib.php) ────────────────────────────
+$signaturefonts = local_usersignature_fonts();
+$defaultfont    = local_usersignature_default_font();
 
 // ─── Processar exclusão ───────────────────────────────────────────────────────
 // require_sesskey() lança exceção se a sesskey for inválida (falha visível),
@@ -61,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $imagedata = required_param('imagedata', PARAM_RAW);
 
     // Validações.
-    if (!array_key_exists($font_slug, SIGNATURE_FONTS)) {
+    if (!array_key_exists($font_slug, $signaturefonts)) {
         throw new \moodle_exception('invalidfont', 'local_usersignature');
     }
     $sig_text = preg_replace('/[^A-Za-zÀ-ÖØ-öø-ÿ\s\-\.]/u', '', $sig_text);
@@ -110,22 +101,21 @@ $PAGE->set_pagelayout('standard');
 $meta          = local_usersignature_get_signature_meta($userid);
 $current_url   = local_usersignature_get_signature_url($userid);
 $default_text  = $meta['text'] ?: fullname($user);
-$selected_font = $meta['font'] ?: SIGNATURE_DEFAULT_FONT;
+$selected_font = $meta['font'] ?: $defaultfont;
 // Assinaturas antigas podem referenciar fontes removidas (dancing, greatvibes...).
-if (!array_key_exists($selected_font, SIGNATURE_FONTS)) {
-    $selected_font = SIGNATURE_DEFAULT_FONT;
+if (!array_key_exists($selected_font, $signaturefonts)) {
+    $selected_font = $defaultfont;
 }
 
-// URLs das fontes locais empacotadas com o plugin (fonts/*.woff2 + *.ttf).
+// As fontes são servidas por font.php, que busca em local/usersignature/fonts/
+// e em $CFG->dataroot/fonts/ (moodledata — não acessível via web diretamente).
 $fontfaces = '';
-foreach (SIGNATURE_FONTS as $info) {
-    $woff2 = (new \moodle_url('/local/usersignature/fonts/' . $info['file'] . '.woff2'))->out(false);
-    $ttf   = (new \moodle_url('/local/usersignature/fonts/' . $info['file'] . '.ttf'))->out(false);
+foreach ($signaturefonts as $slug => $info) {
+    $url = (new \moodle_url('/local/usersignature/font.php', ['font' => $slug]))->out(false);
     $fontfaces .= sprintf(
-        "@font-face { font-family: %s; src: url('%s') format('woff2'), url('%s') format('truetype'); font-display: swap; }\n",
+        "@font-face { font-family: %s; src: url('%s'); font-display: swap; }\n",
         trim(explode(',', $info['family'])[0]),
-        $woff2,
-        $ttf
+        $url
     );
 }
 
@@ -214,7 +204,7 @@ echo $OUTPUT->header();
         </p>
 
         <div class="sig-grid">
-        <?php foreach (SIGNATURE_FONTS as $slug => $info): ?>
+        <?php foreach ($signaturefonts as $slug => $info): ?>
             <label class="sig-card <?= ($slug === $selected_font) ? 'selected' : '' ?>"
                    id="card-<?= $slug ?>" data-font="<?= $slug ?>">
                 <span class="sig-font-label"><?= s($info['label']) ?></span>
@@ -248,7 +238,7 @@ echo $OUTPUT->header();
 (function () {
     'use strict';
 
-    const FONTS = <?= json_encode(SIGNATURE_FONTS) ?>;
+    const FONTS = <?= json_encode($signaturefonts) ?>;
     const W = 340, H = 68;
 
     let currentFont = <?= json_encode($selected_font) ?>;

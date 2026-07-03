@@ -24,5 +24,13 @@ function xmldb_local_usersignature_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026070200, 'local', 'usersignature');
     }
 
+    // 2.2.0 — novo conjunto de fontes: autography, caveat, sacramento, aerotis.
+    if ($oldversion < 2026070300) {
+        list($insql, $params) = $DB->get_in_or_equal(['autography', 'caveat', 'sacramento', 'aerotis'], SQL_PARAMS_QM, 'param', false);
+        $DB->set_field_select('local_usersignature', 'font_style', 'autography', "font_style $insql", $params);
+
+        upgrade_plugin_savepoint(true, 2026070300, 'local', 'usersignature');
+    }
+
     return true;
 }

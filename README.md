@@ -18,7 +18,7 @@ Plugins de **assinatura cursiva por usuário** para Moodle 5.x, integrados com o
 - Moodle **5.0** ou superior (testado em 5.2.1)
 - PHP **8.2+**
 - Plugin [`mod_certificatebeautiful`](https://github.com/EduardoKrausME/moodle-mod_certificatebeautiful) instalado (para o subplugin de certificado)
-- Arquivos das fontes locais em `local/usersignature/fonts/` (Aerotis, Autography, Creata, Tomatoes) — ver `local_usersignature/fonts/README.md`
+- Arquivos das fontes locais em `local/usersignature/fonts/` (Autography, Caveat, Sacramento, Aerotis) — ver `local_usersignature/fonts/README.md`
 
 ---
 
@@ -87,10 +87,10 @@ sudo -u www-data php /var/www/moodle/admin/cli/purge_caches.php
 
 | Estilo | Fonte | Característica |
 |--------|-------|----------------|
-| `aerotis` | Aerotis | Cursiva moderna e fluida |
 | `autography` | Autography | Assinatura manuscrita elegante — **padrão** |
-| `creata` | Creata | Caligráfica sofisticada |
-| `tomatoes` | Tomatoes | Manuscrita casual e natural |
+| `caveat` | Caveat | Manuscrita natural, casual |
+| `sacramento` | Sacramento | Fina, fluida, monolinear |
+| `aerotis` | Aerotis | Cursiva moderna e fluida |
 
 As fontes são servidas localmente pelo plugin (`local/usersignature/fonts/`) — não há mais dependência do Google Fonts.
 

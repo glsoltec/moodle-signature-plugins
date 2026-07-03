@@ -27,10 +27,10 @@ if ($userid != $USER->id) {
 // [slug => [label, family CSS, tamanho base px, cor hex]]
 // Arquivos correspondentes em local/usersignature/fonts/ (ver 'file').
 const SIGNATURE_FONTS = [
-    'aerotis'    => ['label' => 'Aerotis',    'family' => "'Aerotis', cursive",    'file' => 'Aerotis',    'size' => 50, 'color' => '#1a3a5c'],
     'autography' => ['label' => 'Autography', 'family' => "'Autography', cursive", 'file' => 'Autography', 'size' => 56, 'color' => '#2c4a1e'],
-    'creata'     => ['label' => 'Creata',     'family' => "'Creata', cursive",     'file' => 'Creata',     'size' => 48, 'color' => '#3a1a1a'],
-    'tomatoes'   => ['label' => 'Tomatoes',   'family' => "'Tomatoes', cursive",   'file' => 'Tomatoes',   'size' => 50, 'color' => '#1a2a4a'],
+    'caveat'     => ['label' => 'Caveat',     'family' => "'Caveat', cursive",     'file' => 'Caveat',     'size' => 54, 'color' => '#1a2a4a'],
+    'sacramento' => ['label' => 'Sacramento', 'family' => "'Sacramento', cursive", 'file' => 'Sacramento', 'size' => 56, 'color' => '#3a1a1a'],
+    'aerotis'    => ['label' => 'Aerotis',    'family' => "'Aerotis', cursive",    'file' => 'Aerotis',    'size' => 50, 'color' => '#1a3a5c'],
 ];
 
 // Fonte padrão para todos os usuários.

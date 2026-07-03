@@ -58,7 +58,7 @@ if ($path === null) {
 
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . filesize($path));
-header('Cache-Control: public, max-age=604800');
+header('Cache-Control: public, max-age=31536000, immutable');
 header('Access-Control-Allow-Origin: *'); // Fontes exigem CORS quando há CDN/domínio alternativo.
 readfile($path);
 die;

@@ -11,4 +11,6 @@ $string['tag_teacher_signature_img2']  = 'Teacher signature: 2nd teacher (image)
 $string['tag_teacher_signature_all']   = 'Teacher signature: all teachers side by side (with name)';
 $string['tag_teacher_signature_name1'] = 'Teacher signature: 1st teacher name';
 $string['tag_teacher_signature_name2'] = 'Teacher signature: 2nd teacher name';
+$string['tag_course_startdate_br']     = 'Course: formatted start date (dd/mm/yyyy)';
+$string['tag_course_enddate_br']       = 'Course: formatted end date (dd/mm/yyyy)';
 $string['privacy:metadata']  = 'This subplugin does not store personal data directly; it reads data managed by local_usersignature.';

@@ -67,6 +67,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$png_data || strlen($png_data) < 100) {
         throw new \moodle_exception('invalidtext', 'local_usersignature');
     }
+    // Garante que os dados decodificados geram uma imagem válida.
+    $img = @imagecreatefromstring($png_data);
+    if (!$img) {
+        throw new \moodle_exception('invalidtext', 'local_usersignature');
+    }
+    imagedestroy($img);
 
     // Salvar no file_storage (substitui assinatura anterior).
     $fs = get_file_storage();

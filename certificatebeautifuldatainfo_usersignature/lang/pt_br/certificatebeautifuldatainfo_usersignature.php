@@ -11,4 +11,6 @@ $string['tag_teacher_signature_img2']  = 'Assinatura do professor: 2º professor
 $string['tag_teacher_signature_all']   = 'Assinatura do professor: todos lado a lado (com nome)';
 $string['tag_teacher_signature_name1'] = 'Assinatura do professor: nome do 1º professor';
 $string['tag_teacher_signature_name2'] = 'Assinatura do professor: nome do 2º professor';
+$string['tag_course_startdate_br']     = 'Curso: data de início formatada (dd/mm/aaaa)';
+$string['tag_course_enddate_br']       = 'Curso: data de término formatada (dd/mm/aaaa)';
 $string['privacy:metadata']  = 'Este subplugin não armazena dados pessoais diretamente; ele lê dados gerenciados pelo local_usersignature.';

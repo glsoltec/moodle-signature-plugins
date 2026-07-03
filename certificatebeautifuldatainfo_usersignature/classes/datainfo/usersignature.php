@@ -43,6 +43,8 @@ class usersignature extends help_base {
             ['key' => 'teacher_signature_all',   'label' => get_string('tag_teacher_signature_all',   'certificatebeautifuldatainfo_usersignature')],
             ['key' => 'teacher_signature_name1', 'label' => get_string('tag_teacher_signature_name1', 'certificatebeautifuldatainfo_usersignature')],
             ['key' => 'teacher_signature_name2', 'label' => get_string('tag_teacher_signature_name2', 'certificatebeautifuldatainfo_usersignature')],
+            ['key' => 'course_startdate_br',     'label' => get_string('tag_course_startdate_br',     'certificatebeautifuldatainfo_usersignature')],
+            ['key' => 'course_enddate_br',       'label' => get_string('tag_course_enddate_br',       'certificatebeautifuldatainfo_usersignature')],
         ];
     }
 
@@ -74,6 +76,16 @@ class usersignature extends help_base {
         $t1 = $teachers[0] ?? null;
         $t2 = $teachers[1] ?? null;
 
+        // Datas do curso formatadas para o padrão brasileiro
+        $course_startdate_br = '';
+        if (!empty($course->startdate)) {
+            $course_startdate_br = userdate($course->startdate, '%d/%m/%Y');
+        }
+        $course_enddate_br = '';
+        if (!empty($course->enddate)) {
+            $course_enddate_br = userdate($course->enddate, '%d/%m/%Y');
+        }
+
         return [
             'signature_img'  => $img_tag,
             'signature_url'  => $url_string,
@@ -85,6 +97,9 @@ class usersignature extends help_base {
             'teacher_signature_all'   => self::teachers_block($teachers),
             'teacher_signature_name1' => $t1 ? fullname($t1) : '',
             'teacher_signature_name2' => $t2 ? fullname($t2) : '',
+
+            'course_startdate_br'     => $course_startdate_br,
+            'course_enddate_br'       => $course_enddate_br,
         ];
     }
 

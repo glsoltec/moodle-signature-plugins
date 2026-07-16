@@ -148,7 +148,10 @@ function local_usersignature_pluginfile(
  */
 function local_usersignature_can_manage(\stdClass $user, \context_user $context): bool {
     global $USER;
-    return $USER->id == $user->id || has_capability('moodle/user:editprofile', $context);
+    if ($USER->id == $user->id) {
+        return true;
+    }
+    return has_capability('local/usersignature:manage', $context);
 }
 
 /**

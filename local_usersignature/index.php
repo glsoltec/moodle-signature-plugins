@@ -127,14 +127,12 @@ $current_src = $current_url
     : '';
 
 // ─── Renderizar ───────────────────────────────────────────────────────────────
-echo $OUTPUT->header();
-
-$PAGE->requires->css('/local/usersignature/styles.css');
 $PAGE->requires->js_call_amd('local_usersignature/signature', 'init', [
     $signaturefonts,
     $selected_font,
     $default_text,
 ]);
+echo $OUTPUT->header();
 ?>
 <style><?= $fontfaces ?></style>
 

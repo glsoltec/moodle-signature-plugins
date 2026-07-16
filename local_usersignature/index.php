@@ -49,7 +49,7 @@ if ($delete) {
 }
 
 // ─── Processar POST (salvar) ──────────────────────────────────────────────────
-if ($PAGE->is_submitted()) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_sesskey();
 
     $font_slug = required_param('selectedfont', PARAM_ALPHA);

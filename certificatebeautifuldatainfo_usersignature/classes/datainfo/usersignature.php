@@ -3,14 +3,30 @@ namespace certificatebeautifuldatainfo_usersignature\datainfo;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../../../../local/usersignature/lib.php');
+global $CFG;
+require_once($CFG->dirroot . '/local/usersignature/lib.php');
 
 use mod_certificatebeautiful\datainfo\help_base;
 
 /**
- * Exposes the user's cursive signature as replaceable tags in certificate
- * HTML templates. Provides student signature, teacher signatures, and
- * Brazilian-formatted course dates.
+ * Subplugin que expõe a assinatura cursiva do usuário como tags
+ * substituíveis no template HTML do mod_certificatebeautiful.
+ *
+ * Tags do DESTINATÁRIO do certificado (aluno):
+ *   {$USERSIGNATURE->signature_img}  — <img> base64 pronta para o HTML/PDF
+ *   {$USERSIGNATURE->signature_url}  — URL pública da imagem PNG (uso web)
+ *   {$USERSIGNATURE->signature_has}  — "1" se há assinatura, "0" se não
+ *   {$USERSIGNATURE->signature_font} — slug do estilo de fonte utilizado
+ *
+ * Tags do(s) PROFESSOR(es) do curso:
+ *   {$USERSIGNATURE->teacher_signature_img1}  — assinatura do 1º professor
+ *   {$USERSIGNATURE->teacher_signature_img2}  — assinatura do 2º professor
+ *   {$USERSIGNATURE->teacher_signature_all}   — assinaturas de todos (lado a lado, com nome)
+ *   {$USERSIGNATURE->teacher_signature_name1} — nome do 1º professor
+ *   {$USERSIGNATURE->teacher_signature_name2} — nome do 2º professor
+ *
+ * O professor é identificado pelos papéis de contato do curso ($CFG->coursecontact,
+ * normalmente "Professor"), a mesma regra usada pelo subplugin oficial "teachers".
  */
 class usersignature extends help_base {
 

@@ -13,7 +13,7 @@ class observer {
             return;
         }
 
-        if (!self::is_configured()) {
+        if (!get_config('local_certificatesign', 'autosign_enabled') || !self::is_configured()) {
             return;
         }
 

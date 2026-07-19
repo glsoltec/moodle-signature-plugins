@@ -24,6 +24,8 @@ $string['signerlocation']          = 'Signer Location';
 $string['signerlocation_help']     = 'Auto-filled from the certificate subject. Read-only.';
 $string['signerreason']            = 'Signing Reason';
 $string['signerreason_help']       = 'Reason displayed in the signature (ex.: "Course Certificate").';
+$string['autosign_enabled']        = 'Enable automatic signing';
+$string['autosign_enabled_help']   = 'When enabled, certificates are signed automatically by the scheduled task and immediately upon issuance.';
 
 $string['gen_heading']             = 'Generate Self-Signed Certificate';
 $string['gen_heading_desc']        = 'If you do not have a PFX certificate, you can generate a self-signed one. It will be valid for 10 years.';

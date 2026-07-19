@@ -49,6 +49,13 @@ if ($hassiteconfig) {
         PARAM_TEXT
     ));
 
+    $settings->add(new \admin_setting_configcheckbox(
+        'local_certificatesign/autosign_enabled',
+        get_string('autosign_enabled', 'local_certificatesign'),
+        get_string('autosign_enabled_help', 'local_certificatesign'),
+        1
+    ));
+
     $genurl = new \moodle_url('/local/certificatesign/generate.php');
     $settings->add(new admin_setting_heading(
         'local_certificatesign/generatecert',

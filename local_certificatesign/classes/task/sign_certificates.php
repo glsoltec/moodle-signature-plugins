@@ -21,9 +21,8 @@ class sign_certificates extends \core\task\scheduled_task {
     public function execute() {
         global $DB;
 
-        $pfxconfigured = self::is_configured();
-        if (!$pfxconfigured) {
-            mtrace('local_certificatesign: PFX not configured, skipping.');
+        if (!self::is_enabled()) {
+            mtrace('local_certificatesign: automatic signing disabled in settings, skipping.');
             return;
         }
 
@@ -90,12 +89,15 @@ class sign_certificates extends \core\task\scheduled_task {
     }
 
     /**
-     * Check if the PFX certificate is configured.
+     * Check if automatic signing is enabled and PFX is configured.
      */
-    public static function is_configured(): bool {
-        $pfxfile = get_config('local_certificatesign', 'pfxfile');
+    public static function is_enabled(): bool {
+        if (!get_config('local_certificatesign', 'autosign_enabled')) {
+            return false;
+        }
+        $pfxcontent = \local_certificatesign\signer::get_pfx_content();
         $password = get_config('local_certificatesign', 'certpassword');
-        return !empty($pfxfile) && $password !== false;
+        return $pfxcontent !== null && !empty($password);
     }
 
     /**

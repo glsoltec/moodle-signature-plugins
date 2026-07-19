@@ -26,6 +26,16 @@ class sign_certificates extends \core\task\scheduled_task {
             return;
         }
 
+        $interval = (int) get_config('local_certificatesign', 'task_interval');
+        if ($interval <= 0) {
+            $interval = 2;
+        }
+        $lastrun = (int) get_config('local_certificatesign', 'task_lastrun');
+        if ($lastrun > 0 && (time() - $lastrun) < $interval * 60) {
+            return;
+        }
+        set_config('task_lastrun', time(), 'local_certificatesign');
+
         $fs = get_file_storage();
 
         $sql = "SELECT ci.id, ci.userid, ci.cmid, ci.code, ci.certificatebeautifulid, ci.timecreated

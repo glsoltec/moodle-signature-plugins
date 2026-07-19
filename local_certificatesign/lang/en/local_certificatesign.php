@@ -26,6 +26,8 @@ $string['signerreason']            = 'Signing Reason';
 $string['signerreason_help']       = 'Reason displayed in the signature (ex.: "Course Certificate").';
 $string['autosign_enabled']        = 'Enable automatic signing';
 $string['autosign_enabled_help']   = 'When enabled, certificates are signed automatically by the scheduled task and immediately upon issuance.';
+$string['task_interval']           = 'Task interval';
+$string['task_interval_help']      = 'How often the scheduled task should process pending certificates (in minutes).';
 
 $string['gen_heading']             = 'Generate Self-Signed Certificate';
 $string['gen_heading_desc']        = 'If you do not have a PFX certificate, you can generate a self-signed one. It will be valid for 10 years.';

@@ -56,6 +56,16 @@ if ($hassiteconfig) {
         1
     ));
 
+    $settings->add(new \admin_setting_configselect(
+        'local_certificatesign/task_interval',
+        get_string('task_interval', 'local_certificatesign'),
+        get_string('task_interval_help', 'local_certificatesign'),
+        2,
+        [1 => '1 ' . get_string('minutes'), 2 => '2 ' . get_string('minutes'),
+         5 => '5 ' . get_string('minutes'), 10 => '10 ' . get_string('minutes'),
+         15 => '15 ' . get_string('minutes'), 30 => '30 ' . get_string('minutes')]
+    ));
+
     $genurl = new \moodle_url('/local/certificatesign/generate.php');
     $settings->add(new admin_setting_heading(
         'local_certificatesign/generatecert',

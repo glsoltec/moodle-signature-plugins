@@ -5,7 +5,7 @@ $tasks = [
     [
         'classname' => 'local_certificatesign\task\sign_certificates',
         'blocking'  => 0,
-        'minute'    => '*/5',
+        'minute'    => '*/2',
         'hour'      => '*',
         'day'       => '*',
         'month'     => '*',

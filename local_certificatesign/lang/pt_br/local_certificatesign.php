@@ -5,17 +5,39 @@ $string['pluginname']              = 'Assinatura Digital de Certificados';
 $string['settings']                = 'Configurações de Assinatura';
 
 $string['pfxfile']                 = 'Certificado PFX/P12';
-$string['pfxfile_help']            = 'Faça upload do arquivo PFX ou P12 usado para assinar digitalmente os certificados.';
+$string['pfxfile_help']            = 'Faça upload do arquivo PFX ou P12. Após enviar, informe a senha abaixo e salve. Se a senha estiver correta, os dados do dono do certificado serão exibidos.';
 $string['certpassword']            = 'Senha do Certificado';
-$string['certpassword_help']       = 'Senha para desbloquear o certificado PFX/P12.';
+$string['certpassword_help']       = 'Senha para desbloquear o certificado PFX/P12. Salve o formulário para validar.';
+
+$string['certinfo']                = 'Informações do Certificado';
+$string['certinfo_help']           = 'Informações extraídas do certificado após validação da senha.';
+$string['certinfonocert']          = 'Nenhum certificado enviado ou senha não configurada. Envie um arquivo PFX e informe a senha, depois salve.';
+$string['certinfo_cn']             = 'Proprietário (CN)';
+$string['certinfo_org']            = 'Organização';
+$string['certinfo_valid']          = 'Validade';
+$string['certinfo_issuer']         = 'Emissor';
+$string['certexpired']             = 'Este certificado está expirado!';
+
 $string['signername']              = 'Nome do Signatário';
-$string['signername_help']         = 'Nome exibido como signatário do certificado.';
+$string['signername_help']         = 'Preenchido automaticamente a partir do CN do certificado. Apenas leitura.';
 $string['signerlocation']          = 'Local do Signatário';
-$string['signerlocation_help']     = 'Cidade/local do signatário.';
+$string['signerlocation_help']     = 'Preenchido automaticamente a partir do assunto do certificado. Apenas leitura.';
 $string['signerreason']            = 'Motivo da Assinatura';
 $string['signerreason_help']       = 'Motivo exibido na assinatura (ex.: "Certificado de Curso").';
-$string['signercontact']           = 'Informações de Contato';
-$string['signercontact_help']      = 'Contato do signatário (ex.: e-mail ou telefone).';
+
+$string['gen_heading']             = 'Gerar Certificado Autoassinado';
+$string['gen_heading_desc']        = 'Se você não possui um certificado PFX, pode gerar um autoassinado. Terá validade de 10 anos.';
+$string['gen_btn']                 = 'Gerar Certificado Autoassinado';
+$string['gen_title']               = 'Gerar Certificado Autoassinado';
+$string['gen_cn']                  = 'Nome Comum (CN)';
+$string['gen_org']                 = 'Organização';
+$string['gen_country']             = 'País (código de 2 letras)';
+$string['gen_password']            = 'Senha do Certificado';
+$string['gen_password_confirm']    = 'Confirmar Senha';
+$string['gen_generate']            = 'Gerar e Instalar';
+$string['gen_passwords_mismatch']  = 'As senhas não conferem.';
+$string['gen_password_weak']       = 'A senha deve ter no mínimo 4 caracteres.';
+$string['gen_success']             = 'Certificado autoassinado gerado e instalado com sucesso.';
 
 $string['task_sign']               = 'Assinar certificados pendentes';
 $string['signature_appended']      = 'Certificado assinado digitalmente.';

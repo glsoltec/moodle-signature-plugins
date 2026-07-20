@@ -25,7 +25,7 @@ $string['autosign_enabled_help']   = 'When enabled, the scheduled task processes
 $string['task_interval']           = 'local_certificatesign | task_interval';
 $string['task_interval_help']      = 'How often the scheduled task should process pending certificates. Default: 2 minutes.';
 
-$string['gen_heading']             = 'No certificate? Generate a self-signed one';
+$string['gen_heading']             = 'Would you like to generate a new self-signed certificate?';
 $string['gen_heading_desc']        = 'If you do not have a PFX/P12 file, the system can generate a self-signed certificate valid for 10 years. Fill in the details below and it will be automatically installed as the plugin certificate.';
 $string['gen_btn']                 = 'Generate Self-Signed Certificate';
 $string['gen_title']               = 'Generate Self-Signed Certificate';

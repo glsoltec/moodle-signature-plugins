@@ -25,7 +25,7 @@ $string['autosign_enabled_help']   = 'Quando habilitado, a tarefa agendada proce
 $string['task_interval']           = 'local_certificatesign | task_interval';
 $string['task_interval_help']      = 'Define a cada quantos minutos a tarefa agendada processa os certificados pendentes. Padrão: 2 minutos.';
 
-$string['gen_heading']             = 'Não possui certificado? Gere um autoassinado';
+$string['gen_heading']             = 'Deseja gerar um novo certificado autoassinado?';
 $string['gen_heading_desc']        = 'Caso não tenha um arquivo PFX/P12, o sistema pode gerar um certificado autoassinado com validade de 10 anos. Preencha os dados abaixo e ele será instalado automaticamente como certificado do plugin.';
 $string['gen_btn']                 = 'Gerar Certificado Autoassinado';
 $string['gen_title']               = 'Gerar Certificado Autoassinado';

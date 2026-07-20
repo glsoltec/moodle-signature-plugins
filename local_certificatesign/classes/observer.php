@@ -3,13 +3,19 @@ namespace local_certificatesign;
 
 defined('MOODLE_INTERNAL') || die();
 
-class observer {
+    private static $processing = false;
 
     public static function file_created(\core\event\file_created $event) {
         global $DB;
 
+        if (self::$processing) {
+            return;
+        }
+
         $data = $event->get_data();
-        if ($data['component'] !== 'mod_certificatebeautiful' || $data['filearea'] !== 'certificate') {
+        $other = $data['other'];
+
+        if ($other['component'] !== 'mod_certificatebeautiful' || $other['filearea'] !== 'certificate') {
             return;
         }
 
@@ -17,10 +23,28 @@ class observer {
             return;
         }
 
+        self::$processing = true;
+
         try {
             $fs = get_file_storage();
-            $file = $fs->get_file_by_id($data['objectid']);
+            $file = $fs->get_file($data['contextid'], $other['component'], $other['filearea'],
+                $other['itemid'], $other['filepath'], $other['filename']);
             if (!$file) {
+                self::$processing = false;
+                return;
+            }
+
+            $filename = $other['filename'];
+            $issuecode = basename($filename, '.pdf');
+            $issue = $DB->get_record('certificatebeautiful_issue', ['code' => $issuecode]);
+            if (!$issue) {
+                self::$processing = false;
+                return;
+            }
+
+            $existing = $DB->record_exists('local_certificatesign_log', ['issueid' => $issue->id]);
+            if ($existing) {
+                self::$processing = false;
                 return;
             }
 
@@ -30,20 +54,19 @@ class observer {
             $file->delete();
             $fs->create_file_from_string([
                 'contextid' => $data['contextid'],
-                'component' => $data['component'],
-                'filearea'  => $data['filearea'],
-                'itemid'    => $data['itemid'],
-                'filepath'  => $data['filepath'],
-                'filename'  => $data['filename'],
+                'component' => $other['component'],
+                'filearea'  => $other['filearea'],
+                'itemid'    => $other['itemid'],
+                'filepath'  => $other['filepath'],
+                'filename'  => $filename,
             ], $signedpdf);
 
-            $issue = $DB->get_record('certificatebeautiful_issue', ['code' => basename($data['filename'], '.pdf')]);
-            if ($issue) {
-                self::log_signed($issue->id);
-            }
+            self::log_signed($issue->id);
         } catch (\Exception $e) {
             debugging("local_certificatesign observer: {$e->getMessage()}", DEBUG_DEVELOPER);
         }
+
+        self::$processing = false;
     }
 
     private static function is_configured(): bool {

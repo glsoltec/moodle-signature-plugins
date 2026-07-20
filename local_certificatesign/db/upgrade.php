@@ -15,15 +15,15 @@ function xmldb_local_certificatesign_upgrade(int $oldversion): bool {
             $table->add_key('issueid', XMLDB_KEY_UNIQUE, ['issueid']);
             $dbman->create_table($table);
         }
-        upgrade_plugin_savepoint(true, 2026071800, 'local_certificatesign');
+        upgrade_plugin_savepoint(true, 2026071800, 'local', 'certificatesign');
     }
 
     if ($oldversion < 2026071802) {
-        upgrade_plugin_savepoint(true, 2026071802, 'local_certificatesign');
+        upgrade_plugin_savepoint(true, 2026071802, 'local', 'certificatesign');
     }
 
     if ($oldversion < 2026071803) {
-        upgrade_plugin_savepoint(true, 2026071803, 'local_certificatesign');
+        upgrade_plugin_savepoint(true, 2026071803, 'local', 'certificatesign');
     }
 
     return true;

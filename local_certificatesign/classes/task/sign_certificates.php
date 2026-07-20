@@ -15,9 +15,6 @@ class sign_certificates extends \core\task\scheduled_task {
         return get_string('task_sign', 'local_certificatesign');
     }
 
-    /**
-     * Execute task.
-     */
     public function execute() {
         global $DB;
 
@@ -35,6 +32,13 @@ class sign_certificates extends \core\task\scheduled_task {
             return;
         }
         set_config('task_lastrun', time(), 'local_certificatesign');
+
+        $dbman = $DB->get_manager();
+        $logtable = new \xmldb_table('local_certificatesign_log');
+        if (!$dbman->table_exists($logtable)) {
+            mtrace('local_certificatesign: log table not found. Run upgrade first.');
+            return;
+        }
 
         $fs = get_file_storage();
 
@@ -86,7 +90,10 @@ class sign_certificates extends \core\task\scheduled_task {
                     'filename'  => $filename,
                 ], $signedpdf);
 
-                self::log_signed($issue->id);
+                $DB->insert_record('local_certificatesign_log', (object)[
+                    'issueid'     => $issue->id,
+                    'timecreated' => time(),
+                ]);
 
                 $count++;
                 mtrace("local_certificatesign: signed issue {$issue->id} ({$filename})");
@@ -98,9 +105,6 @@ class sign_certificates extends \core\task\scheduled_task {
         mtrace("local_certificatesign: {$count} certificate(s) signed.");
     }
 
-    /**
-     * Check if automatic signing is enabled and PFX is configured.
-     */
     public static function is_enabled(): bool {
         if (!get_config('local_certificatesign', 'autosign_enabled')) {
             return false;
@@ -108,29 +112,5 @@ class sign_certificates extends \core\task\scheduled_task {
         $pfxcontent = \local_certificatesign\signer::get_pfx_content();
         $password = get_config('local_certificatesign', 'certpassword');
         return $pfxcontent !== null && !empty($password);
-    }
-
-    /**
-     * Log that an issue has been signed.
-     */
-    private static function log_signed(int $issueid): void {
-        global $DB;
-
-        // Create log table on first use if not exists.
-        $dbman = $DB->get_manager();
-        $table = new \xmldb_table('local_certificatesign_log');
-        if (!$dbman->table_exists($table)) {
-            $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
-            $table->add_field('issueid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
-            $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
-            $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
-            $table->add_key('issueid', XMLDB_KEY_UNIQUE, ['issueid']);
-            $dbman->create_table($table);
-        }
-
-        $DB->insert_record('local_certificatesign_log', (object)[
-            'issueid'     => $issueid,
-            'timecreated' => time(),
-        ]);
     }
 }

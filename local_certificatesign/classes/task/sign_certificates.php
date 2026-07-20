@@ -18,6 +18,8 @@ class sign_certificates extends \core\task\scheduled_task {
     public function execute() {
         global $DB;
 
+        mtrace('local_certificatesign: task started.');
+
         if (!self::is_enabled()) {
             mtrace('local_certificatesign: automatic signing disabled in settings, skipping.');
             return;
@@ -29,6 +31,7 @@ class sign_certificates extends \core\task\scheduled_task {
         }
         $lastrun = (int) get_config('local_certificatesign', 'task_lastrun');
         if ($lastrun > 0 && (time() - $lastrun) < $interval * 60) {
+            mtrace("local_certificatesign: last run was " . (time() - $lastrun) . "s ago, interval is {$interval}min, skipping.");
             return;
         }
         set_config('task_lastrun', time(), 'local_certificatesign');
@@ -36,7 +39,7 @@ class sign_certificates extends \core\task\scheduled_task {
         $dbman = $DB->get_manager();
         $logtable = new \xmldb_table('local_certificatesign_log');
         if (!$dbman->table_exists($logtable)) {
-            mtrace('local_certificatesign: log table not found. Run upgrade first.');
+            mtrace('local_certificatesign: log table not found. Run upgrade.php first.');
             return;
         }
 
@@ -47,6 +50,7 @@ class sign_certificates extends \core\task\scheduled_task {
              LEFT JOIN {local_certificatesign_log} l ON l.issueid = ci.id
                  WHERE l.id IS NULL";
         $issues = $DB->get_records_sql($sql);
+        mtrace('local_certificatesign: found ' . count($issues) . ' pending certificate(s).');
 
         if (empty($issues)) {
             mtrace('local_certificatesign: no pending certificates to sign.');

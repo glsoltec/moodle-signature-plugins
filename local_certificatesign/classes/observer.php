@@ -47,6 +47,13 @@ class observer {
                 return;
             }
 
+            $dbman = $DB->get_manager();
+            $logtable = new \xmldb_table('local_certificatesign_log');
+            if (!$dbman->table_exists($logtable)) {
+                self::$processing = false;
+                return;
+            }
+
             if ($DB->record_exists('local_certificatesign_log', ['issueid' => $issue->id])) {
                 self::$processing = false;
                 return;

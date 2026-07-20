@@ -18,10 +18,6 @@ $string['certinfo_valid']          = 'Validity';
 $string['certinfo_issuer']         = 'Issuer';
 $string['certexpired']             = 'This certificate has expired!';
 
-$string['signername']              = 'Signer Name';
-$string['signername_help']         = 'Auto-filled from the certificate CN. Read-only.';
-$string['signerlocation']          = 'Signer Location';
-$string['signerlocation_help']     = 'Auto-filled from the certificate subject. Read-only.';
 $string['signerreason']            = 'Signing Reason';
 $string['signerreason_help']       = 'Reason displayed in the signature (ex.: "Course Certificate").';
 $string['autosign_enabled']        = 'Enable/disable the scheduled task';
@@ -29,8 +25,8 @@ $string['autosign_enabled_help']   = 'When enabled, the scheduled task processes
 $string['task_interval']           = 'local_certificatesign | task_interval';
 $string['task_interval_help']      = 'How often the scheduled task should process pending certificates. Default: 2 minutes.';
 
-$string['gen_heading']             = 'Generate Self-Signed Certificate';
-$string['gen_heading_desc']        = 'If you do not have a PFX certificate, you can generate a self-signed one. It will be valid for 10 years.';
+$string['gen_heading']             = 'No certificate? Generate a self-signed one';
+$string['gen_heading_desc']        = 'If you do not have a PFX/P12 file, the system can generate a self-signed certificate valid for 10 years. Fill in the details below and it will be automatically installed as the plugin certificate.';
 $string['gen_btn']                 = 'Generate Self-Signed Certificate';
 $string['gen_title']               = 'Generate Self-Signed Certificate';
 $string['gen_cn']                  = 'Common Name (CN)';

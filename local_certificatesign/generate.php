@@ -39,10 +39,6 @@ if ($data = $mform->get_data()) {
 
         set_config('certpassword', $data->password, 'local_certificatesign');
 
-        $certinfo = \local_certificatesign\signer::get_cert_info($pfxcontent, $data->password);
-        set_config('signername', $certinfo['cn'], 'local_certificatesign');
-        set_config('signerlocation', $certinfo['location'], 'local_certificatesign');
-
         redirect(
             new \moodle_url('/admin/settings.php', ['section' => 'local_certificatesign']),
             get_string('gen_success', 'local_certificatesign'),

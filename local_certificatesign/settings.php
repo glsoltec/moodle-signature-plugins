@@ -24,24 +24,6 @@ if ($hassiteconfig) {
     $settings->add(new \local_certificatesign\admin_setting_certinfo());
 
     $settings->add(new admin_setting_configtext(
-        'local_certificatesign/signername',
-        get_string('signername', 'local_certificatesign'),
-        get_string('signername_help', 'local_certificatesign'),
-        '',
-        PARAM_TEXT,
-        50
-    ));
-
-    $settings->add(new admin_setting_configtext(
-        'local_certificatesign/signerlocation',
-        get_string('signerlocation', 'local_certificatesign'),
-        get_string('signerlocation_help', 'local_certificatesign'),
-        '',
-        PARAM_TEXT,
-        50
-    ));
-
-    $settings->add(new admin_setting_configtext(
         'local_certificatesign/signerreason',
         get_string('signerreason', 'local_certificatesign'),
         get_string('signerreason_help', 'local_certificatesign'),

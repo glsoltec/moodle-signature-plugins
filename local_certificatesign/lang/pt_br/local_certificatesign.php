@@ -18,10 +18,6 @@ $string['certinfo_valid']          = 'Validade';
 $string['certinfo_issuer']         = 'Emissor';
 $string['certexpired']             = 'Este certificado está expirado!';
 
-$string['signername']              = 'Nome do Signatário';
-$string['signername_help']         = 'Preenchido automaticamente a partir do CN do certificado. Apenas leitura.';
-$string['signerlocation']          = 'Local do Signatário';
-$string['signerlocation_help']     = 'Preenchido automaticamente a partir do assunto do certificado. Apenas leitura.';
 $string['signerreason']            = 'Motivo da Assinatura';
 $string['signerreason_help']       = 'Motivo exibido na assinatura (ex.: "Certificado de Curso").';
 $string['autosign_enabled']        = 'Habilitar/desabilitar a tarefa agendada';
@@ -29,8 +25,8 @@ $string['autosign_enabled_help']   = 'Quando habilitado, a tarefa agendada proce
 $string['task_interval']           = 'local_certificatesign | task_interval';
 $string['task_interval_help']      = 'Define a cada quantos minutos a tarefa agendada processa os certificados pendentes. Padrão: 2 minutos.';
 
-$string['gen_heading']             = 'Gerar Certificado Autoassinado';
-$string['gen_heading_desc']        = 'Se você não possui um certificado PFX, pode gerar um autoassinado. Terá validade de 10 anos.';
+$string['gen_heading']             = 'Não possui certificado? Gere um autoassinado';
+$string['gen_heading_desc']        = 'Caso não tenha um arquivo PFX/P12, o sistema pode gerar um certificado autoassinado com validade de 10 anos. Preencha os dados abaixo e ele será instalado automaticamente como certificado do plugin.';
 $string['gen_btn']                 = 'Gerar Certificado Autoassinado';
 $string['gen_title']               = 'Gerar Certificado Autoassinado';
 $string['gen_cn']                  = 'Nome Comum (CN)';

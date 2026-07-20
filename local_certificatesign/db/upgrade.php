@@ -23,7 +23,6 @@ function xmldb_local_certificatesign_upgrade(int $oldversion): bool {
     }
 
     if ($oldversion < 2026071803) {
-        \core\task\manager::reset_scheduled_tasks_for_component('local_certificatesign');
         upgrade_plugin_savepoint(true, 2026071803, 'local_certificatesign');
     }
 

@@ -24,10 +24,10 @@ $string['signerlocation']          = 'Local do Signatário';
 $string['signerlocation_help']     = 'Preenchido automaticamente a partir do assunto do certificado. Apenas leitura.';
 $string['signerreason']            = 'Motivo da Assinatura';
 $string['signerreason_help']       = 'Motivo exibido na assinatura (ex.: "Certificado de Curso").';
-$string['autosign_enabled']        = 'Habilitar assinatura automática';
-$string['autosign_enabled_help']   = 'Quando habilitado, os certificados são assinados automaticamente pela tarefa agendada e imediatamente na emissão.';
-$string['task_interval']           = 'Intervalo da tarefa';
-$string['task_interval_help']      = 'A cada quantos minutos a tarefa agendada deve processar certificados pendentes.';
+$string['autosign_enabled']        = 'Habilitar/desabilitar a tarefa agendada';
+$string['autosign_enabled_help']   = 'Quando habilitado, a tarefa agendada processa certificados pendentes e o observer assina imediatamente na emissão. Quando desabilitado, a tarefa não executa e nenhum certificado é assinado automaticamente.';
+$string['task_interval']           = 'local_certificatesign | task_interval';
+$string['task_interval_help']      = 'Define a cada quantos minutos a tarefa agendada processa os certificados pendentes. Padrão: 2 minutos.';
 
 $string['gen_heading']             = 'Gerar Certificado Autoassinado';
 $string['gen_heading_desc']        = 'Se você não possui um certificado PFX, pode gerar um autoassinado. Terá validade de 10 anos.';

@@ -3,189 +3,101 @@ namespace local_certificatesign;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once($CFG->libdir . '/pdflib.php');
-
 class signer {
 
     public static function sign_pdf(string $pdfcontent): string {
-        global $CFG;
-
-        $pfxcontent = self::get_pfx_content();
-        if ($pfxcontent === null) {
+        $pfx = self::get_pfx_content();
+        if ($pfx === null) {
             throw new \moodle_exception('notconfigured', 'local_certificatesign');
         }
+        $pw = get_config('local_certificatesign', 'certpassword');
+        $c = self::read_pfx($pfx, $pw);
+        $info = self::get_cert_info($pfx, $pw);
 
-        $password = get_config('local_certificatesign', 'certpassword');
-        $certs = self::read_pfx($pfxcontent, $password);
-        $certinfo = self::get_cert_info($pfxcontent, $password);
+        $pdf = str_replace("\r\n", "\n", $pdfcontent);
+        $pdf = rtrim($pdf) . "\n";
 
-        $tmpdir = make_temp_directory('certificatesign');
-        $certpath = $tmpdir . '/' . uniqid('cert_') . '.pem';
-        $keypath  = $tmpdir . '/' . uniqid('key_') . '.pem';
-        $inpdf    = $tmpdir . '/' . uniqid('in_') . '.pdf';
+        $maxhex = 25000;
+        $ph = str_repeat('0', $maxhex);
+        $objnum = 999999;
+        $name = self::pesc($info['cn'] ?? '');
+        $loc  = self::pesc($info['location'] ?? '');
+        $reason = self::pesc(get_config('local_certificatesign', 'signerreason') ?: 'Certificate');
 
-        file_put_contents($certpath, $certs['cert']);
-        file_put_contents($keypath, $certs['pkey']);
-        file_put_contents($inpdf, $pdfcontent);
+        $sig = "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached";
+        if ($name) { $sig .= " /Name ($name)"; }
+        if ($loc)  { $sig .= " /Location ($loc)"; }
+        if ($reason) { $sig .= " /Reason ($reason)"; }
+        $sig .= " /M (D:" . date('YmdHisP') . ")";
+        $sig .= " /ByteRange [0 %d %d %d]";
+        $sig .= " /Contents <$ph> >>";
 
-        $extracerts = '';
-        if (!empty($certs['extracerts'])) {
-            $extracerts = $tmpdir . '/' . uniqid('extra_') . '.pem';
-            file_put_contents($extracerts, $certs['extracerts']);
-        }
+        $before = strlen($pdf);
+        $scount = strlen($objnum . " 0 obj\n" . $sig . "\nendobj\n") + 2;
 
-        try {
-            $signedpdf = self::tcpdf_sign($inpdf, $certpath, $keypath, $password, $extracerts, $certinfo);
-        } catch (\Throwable $e) {
-            $signedpdf = self::byte_range_sign($pdfcontent, $certs['cert'], $certs['pkey'], $certinfo, $password);
-        }
+        $sized = $objnum . " 0 obj\n"
+            . sprintf($sig, $before, $before + $scount + $maxhex / 2, 0)
+            . "\nendobj\n";
 
-        @unlink($certpath);
-        @unlink($keypath);
-        @unlink($inpdf);
-        if ($extracerts) { @unlink($extracerts); }
+        $no = $objnum + 1;
+        $xo = strlen($pdf) + strlen($sized) + 1;
 
-        return $signedpdf;
+        $tobj = "$no 0 obj\n<< /Type /Catalog /AcroForm << /Fields [$objnum 0 R] /SigFlags 3 >> /Perms << /DocMDP << /P /SigQ /V 2 /Reference [{/Type /SigRef /TransformMethod /DocMDP /TransformParams << /P /SigQ /V /2 /Type /TransformParams >>}] >> >> >>\nendobj\n";
+
+        $xr = "xref\n0 0\n{$objnum} 1\n" . sprintf("%010d %05d n \n", $before + 1, 0)
+            . "$no 1\n" . sprintf("%010d %05d n \n", $before + 1 + strlen($sized) + 1, 0);
+
+        $tr = "trailer\n<< /Size $no /Root $no 0 R >>\nstartxref\n$xo\n%%EOF";
+
+        $full = $pdf . "\n" . $sized . $tobj . $xr . $tr;
+        $be = $before + $scount + $maxhex / 2;
+
+        $sign = substr($full, 0, $before)
+            . substr($full, $before + $scount, $be - ($before + $scount));
+
+        $pkcs7 = self::make_pkcs7($sign, $c['cert'], $c['pkey'], $pw);
+
+        return str_replace($ph, bin2hex($pkcs7), $full);
     }
 
-    private static function tcpdf_sign(
-        string $pdfpath, string $certpath, string $keypath,
-        string $password, string $extracerts, array $certinfo
-    ): string {
-        $pdf = new \pdf();
+    private static function make_pkcs7(string $data, string $cert, string $pkey, string $pw): string {
+        $td = sys_get_temp_dir();
+        $in  = tempnam($td, 'csign_');
+        $out = tempnam($td, 'csign_');
 
-        $siginfo = [
-            'Name'        => $certinfo['cn'] ?? '',
-            'Location'    => $certinfo['location'] ?? '',
-            'Reason'      => get_config('local_certificatesign', 'signerreason') ?: 'Certificate',
-            'ContactInfo' => '',
-        ];
+        file_put_contents($in, $data);
 
-        $pdf->setSignature($certpath, $keypath, $password, $extracerts, 2, $siginfo);
-
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-        $pdf->SetAutoPageBreak(false, 0);
-
-        $pagecount = $pdf->setSourceFile($pdfpath);
-        for ($i = 1; $i <= $pagecount; $i++) {
-            $tplidx = $pdf->importPage($i);
-            $size = $pdf->getTemplateSize($tplidx);
-            $pdf->AddPage(
-                $size['orientation'] ?? 'P',
-                [$size['width'] ?? 210, $size['height'] ?? 297]
-            );
-            $pdf->useTemplate($tplidx);
-        }
-
-        return $pdf->Output('', 'S');
-    }
-
-    private static function byte_range_sign(string $pdfcontent, string $cert, string $pkey, array $certinfo, string $password): string {
-        $signername = $certinfo['cn'] ?? '';
-        $location   = $certinfo['location'] ?? '';
-        $reason     = get_config('local_certificatesign', 'signerreason') ?: 'Certificate';
-
-        $pdfcontent = str_replace("\r\n", "\n", $pdfcontent);
-        $pdfcontent = rtrim($pdfcontent) . "\n";
-
-        $sig_max_hex = 25000;
-        $hex_placeholder = str_repeat('0', $sig_max_hex);
-        $content_byte_len = $sig_max_hex / 2;
-        $sig_obj_num = 999999;
-
-        $sig_obj = "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached";
-        if ($signername) {
-            $sig_obj .= " /Name (" . self::pdf_escape($signername) . ")";
-        }
-        if ($location) {
-            $sig_obj .= " /Location (" . self::pdf_escape($location) . ")";
-        }
-        if ($reason) {
-            $sig_obj .= " /Reason (" . self::pdf_escape($reason) . ")";
-        }
-        $sig_obj .= " /M (D:" . date('YmdHisP') . ")";
-        $sig_obj .= " /ByteRange [0 %d %d %d]";
-        $sig_obj .= " /Contents <" . $hex_placeholder . "> >>";
-
-        $content_before_sig = strlen($pdfcontent);
-        $sig_content = $sig_obj_num . " 0 obj\n" . $sig_obj . "\nendobj\n";
-        $byte_range_2 = strlen($sig_content) + 2;
-
-        $sig_obj_sized = sprintf($sig_obj,
-            $content_before_sig,
-            $content_before_sig + $byte_range_2 + $content_byte_len,
-            0
-        );
-
-        $sig_content = $sig_obj_num . " 0 obj\n" . $sig_obj_sized . "\nendobj\n";
-        $new_xref_offset = strlen($pdfcontent) + strlen($sig_content) + 1;
-        $next_obj = $sig_obj_num + 1;
-
-        $trailer_obj = "{$next_obj} 0 obj\n"
-            . "<< /Type /Catalog /AcroForm << /Fields [{$sig_obj_num} 0 R] /SigFlags 3 >>"
-            . " /Perms << /DocMDP << /P /SigQ /V 2"
-            . " /Reference [{/Type /SigRef /TransformMethod /DocMDP"
-            . " /TransformParams << /P /SigQ /V /2 /Type /TransformParams >>}] >> >> >>\nendobj\n";
-
-        $xref = "xref\n0 0\n";
-        $xref .= "{$sig_obj_num} 1\n" . sprintf("%010d %05d n \n", $content_before_sig + 1, 0);
-        $xref .= "{$next_obj} 1\n" . sprintf("%010d %05d n \n", $content_before_sig + 1 + strlen($sig_content) + 1, 0);
-
-        $trailer_content = "trailer\n<< /Size {$next_obj} /Root {$next_obj} 0 R >>\n"
-            . "startxref\n{$new_xref_offset}\n%%EOF";
-
-        $full_pdf = $pdfcontent . "\n" . $sig_content . $trailer_obj . $xref . $trailer_content;
-        $byterange_end = $content_before_sig + $byte_range_2 + $content_byte_len;
-
-        $data_to_sign = substr($full_pdf, 0, $content_before_sig)
-            . substr($full_pdf, $content_before_sig + $byte_range_2,
-                $byterange_end - ($content_before_sig + $byte_range_2));
-
-        $pkcs7_der = self::create_pkcs7_signature($data_to_sign, $cert, $pkey, $password);
-        $signature_hex = bin2hex($pkcs7_der);
-
-        return str_replace($hex_placeholder, $signature_hex, $full_pdf);
-    }
-
-    private static function create_pkcs7_signature(string $data, string $cert, string $pkey, string $password): string {
-        $tmpdir = make_temp_directory('certificatesign');
-        $infile  = $tmpdir . '/' . uniqid('sig_in_') . '.bin';
-        $outfile = $tmpdir . '/' . uniqid('sig_out_') . '.p7s';
-
-        file_put_contents($infile, $data);
-
-        $key = openssl_pkey_get_private($pkey, $password);
+        $key = openssl_pkey_get_private($pkey, $pw);
         if ($key === false) {
+            @unlink($in); @unlink($out);
             throw new \moodle_exception('errorreadingpfx', 'local_certificatesign');
         }
 
-        $result = openssl_pkcs7_sign($infile, $outfile, $cert, $key, [], PKCS7_DETACHED | PKCS7_BINARY);
+        $r = openssl_pkcs7_sign($in, $out, $cert, $key, [], PKCS7_DETACHED);
 
-        @unlink($infile);
+        @unlink($in);
 
-        if (!$result) {
-            @unlink($outfile);
-            $err = openssl_error_string();
-            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', $err ?: '');
+        if (!$r) {
+            @unlink($out);
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', openssl_error_string() ?: '');
         }
 
-        $output = file_get_contents($outfile);
-        @unlink($outfile);
+        $raw = file_get_contents($out);
+        @unlink($out);
 
-        if ($output === false || strlen($output) < 10) {
+        if ($raw === false || strlen($raw) < 10) {
             throw new \moodle_exception('erroropenssl', 'local_certificatesign');
         }
 
-        if (strpos($output, '-----BEGIN PKCS7-----') !== false) {
-            $output = str_replace(["\r\n", "\r"], "\n", $output);
-            if (preg_match('/-----BEGIN PKCS7-----.*?\n(.+)\n-----END PKCS7-----/s', $output, $m)) {
-                return base64_decode(str_replace("\n", '', $m[1]));
-            }
+        // PEM -> DER
+        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
+        if (preg_match('/-----BEGIN PKCS7-----.*?\n(.+)\n-----END PKCS7-----/s', $raw, $m)) {
+            return base64_decode(str_replace("\n", '', $m[1]));
         }
 
-        if (substr(bin2hex($output), 0, 2) === '30') {
-            return $output;
+        // Já é DER?
+        if (bin2hex(substr($raw, 0, 1)) === '30') {
+            return $raw;
         }
 
         throw new \moodle_exception('erroropenssl', 'local_certificatesign');
@@ -193,48 +105,34 @@ class signer {
 
     public static function get_pfx_content(): ?string {
         $fs = get_file_storage();
-        $syscontext = \context_system::instance();
-        $files = $fs->get_area_files($syscontext->id, 'local_certificatesign', 'pfxfile', 0, 'id DESC', false);
-        if (empty($files)) {
-            return null;
-        }
-        return reset($files)->get_content();
+        $f = $fs->get_area_files(\context_system::instance()->id, 'local_certificatesign', 'pfxfile', 0, 'id DESC', false);
+        return empty($f) ? null : reset($f)->get_content();
     }
 
-    public static function read_pfx(string $pfxcontent, string $password): array {
-        $certs = [];
-        if (!openssl_pkcs12_read($pfxcontent, $certs, $password)) {
+    public static function read_pfx(string $pfx, string $pw): array {
+        $c = [];
+        if (!openssl_pkcs12_read($pfx, $c, $pw)) {
             throw new \moodle_exception('errorreadingpfx', 'local_certificatesign');
         }
-        return $certs;
+        return $c;
     }
 
-    public static function get_cert_info(string $pfxcontent, string $password): array {
-        $certs = self::read_pfx($pfxcontent, $password);
-        $certdata = openssl_x509_parse($certs['cert']);
-
-        $cn = $certdata['subject']['CN'] ?? '';
-        $location = '';
-        if (!empty($certdata['subject']['L'])) {
-            $location = $certdata['subject']['L'];
-        } else if (!empty($certdata['subject']['ST'])) {
-            $location = $certdata['subject']['ST'];
-        }
-        if (!empty($certdata['subject']['O'])) {
-            $location = $location ? "{$location} — {$certdata['subject']['O']}" : $certdata['subject']['O'];
-        }
+    public static function get_cert_info(string $pfx, string $pw): array {
+        $c = self::read_pfx($pfx, $pw);
+        $d = openssl_x509_parse($c['cert']);
+        $cn = $d['subject']['CN'] ?? '';
+        $l = '';
+        if (!empty($d['subject']['L'])) { $l = $d['subject']['L']; }
+        elseif (!empty($d['subject']['ST'])) { $l = $d['subject']['ST']; }
+        if (!empty($d['subject']['O'])) { $l = $l ? "$l - {$d['subject']['O']}" : $d['subject']['O']; }
         return [
-            'cn'          => $cn,
-            'location'    => $location,
-            'org'         => $certdata['subject']['O'] ?? '',
-            'validfrom'   => $certdata['validFrom_time_t'] ?? 0,
-            'validto'     => $certdata['validTo_time_t'] ?? 0,
-            'issuer'      => $certdata['issuer']['CN'] ?? '',
-            'fingerprint' => strtoupper(openssl_x509_fingerprint($certs['cert'])),
+            'cn' => $cn, 'location' => $l, 'org' => $d['subject']['O'] ?? '',
+            'validfrom' => $d['validFrom_time_t'] ?? 0, 'validto' => $d['validTo_time_t'] ?? 0,
+            'issuer' => $d['issuer']['CN'] ?? '', 'fingerprint' => strtoupper(openssl_x509_fingerprint($c['cert'])),
         ];
     }
 
-    private static function pdf_escape(string $value): string {
-        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $value);
+    private static function pesc(string $v): string {
+        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $v);
     }
 }

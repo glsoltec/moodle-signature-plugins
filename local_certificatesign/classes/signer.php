@@ -36,7 +36,7 @@ class signer {
 
         try {
             $signedpdf = self::tcpdf_sign($inpdf, $certpath, $keypath, $password, $extracerts, $certinfo);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $signedpdf = self::byte_range_sign($pdfcontent, $certs['cert'], $certs['pkey'], $certinfo);
         }
 

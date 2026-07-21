@@ -28,28 +28,33 @@ if ($token) {
 $issue = $DB->get_record('certificatebeautiful_issue', ['code' => $code], '*', MUST_EXIST);
 $cm    = get_coursemodule_from_id('certificatebeautiful', $issue->cmid, 0, false, MUST_EXIST);
 $course = $DB->get_record("course", ["id" => $cm->course], '*', MUST_EXIST);
-$context = \context_module::instance($cm->id);
+
+$PAGE->set_url('/local/certificatesign/serve.php', ['code' => $code, 'action' => $action]);
+$PAGE->set_context(\context_module::instance($cm->id));
 
 if (!$token) {
     require_course_login($course, true, $cm);
 }
-require_capability('mod/certificatebeautiful:view', $context);
+require_capability('mod/certificatebeautiful:view', $PAGE->context);
 
 /** @var \mod_certificatebeautiful\vo\certificatebeautiful $certificate */
 $certificate = $DB->get_record('certificatebeautiful', ['id' => $cm->instance], '*', MUST_EXIST);
-$user = $DB->get_record("user", ["id" => $issue->userid]);
+$certuser = $DB->get_record("user", ["id" => $issue->userid]);
+if (!$certuser) {
+    throw new \moodle_exception('invaliduser', 'error');
+}
 
 $fs = get_file_storage();
 $filerecord = [
-    'contextid' => $context->id,
+    'contextid' => $PAGE->context->id,
     'component' => 'mod_certificatebeautiful',
     'filearea'  => 'certificate',
-    'itemid'    => $user->id,
+    'itemid'    => $certuser->id,
     'filepath'  => '/',
     'filename'  => "{$issue->code}.pdf",
 ];
 
-$username = fullname($user);
+$username = fullname($certuser);
 $filename = "{$certificate->name} - {$username}.pdf";
 
 // ─── Verificar se já foi assinado ─────────────────────────────────────────────
@@ -79,38 +84,9 @@ if ($storedfile && $logentry) {
         debugging("local_certificatesign serve: {$e->getMessage()}", DEBUG_DEVELOPER);
     }
 } else {
-    try {
-        $model = $DB->get_record('certificatebeautiful_model',
-            ['id' => $certificate->model], '*', MUST_EXIST);
-        $model->pages_info_object = json_decode($model->pages_info);
-
-        /** @var \mod_certificatebeautiful\pdf\page_pdf $pagepdf */
-        $pagepdf = new \mod_certificatebeautiful\pdf\page_pdf();
-        $pdfcontent = $pagepdf->create_pdf($certificate, $issue, $model, $user, $course);
-
-        $fs->create_file_from_string($filerecord, $pdfcontent);
-
-        try {
-            $signedpdf = \local_certificatesign\signer::sign_pdf($pdfcontent);
-            $fs->get_file(
-                $filerecord['contextid'], $filerecord['component'],
-                $filerecord['filearea'], $filerecord['itemid'],
-                $filerecord['filepath'], $filerecord['filename']
-            )->delete();
-            $fs->create_file_from_string($filerecord, $signedpdf);
-            $DB->insert_record('local_certificatesign_log', (object)[
-                'issueid'     => $issue->id,
-                'timecreated' => time(),
-            ]);
-            $pdfcontent = $signedpdf;
-        } catch (\Exception $e) {
-            debugging("local_certificatesign serve sign: {$e->getMessage()}", DEBUG_DEVELOPER);
-        }
-    } catch (\Exception $e) {
-        $viewurl = new \moodle_url('/mod/certificatebeautiful/view-pdf.php',
-            ['code' => $code, 'action' => $action]);
-        redirect($viewurl);
-    }
+    $viewurl = new \moodle_url('/mod/certificatebeautiful/view-pdf.php',
+        ['code' => $code, 'action' => $action]);
+    redirect($viewurl);
 }
 
 // ─── Servir PDF assinado ─────────────────────────────────────────────────────

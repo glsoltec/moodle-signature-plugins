@@ -21,6 +21,8 @@ if ($hassiteconfig) {
         ''
     ));
 
+    $settings->add(new \local_certificatesign\admin_setting_certinfo());
+
     $settings->add(new admin_setting_configtext(
         'local_certificatesign/signerreason',
         get_string('signerreason', 'local_certificatesign'),
@@ -44,5 +46,14 @@ if ($hassiteconfig) {
         [1 => '1 ' . get_string('minutes'), 2 => '2 ' . get_string('minutes'),
          5 => '5 ' . get_string('minutes'), 10 => '10 ' . get_string('minutes'),
          15 => '15 ' . get_string('minutes'), 30 => '30 ' . get_string('minutes')]
+    ));
+
+    $genurl = new \moodle_url('/local/certificatesign/generate.php');
+    $settings->add(new admin_setting_heading(
+        'local_certificatesign/generatecert',
+        get_string('gen_heading', 'local_certificatesign'),
+        get_string('gen_heading_desc', 'local_certificatesign') . '<br>' .
+        \html_writer::link($genurl, get_string('gen_btn', 'local_certificatesign'),
+            ['class' => 'btn btn-primary mt-2'])
     ));
 }

@@ -37,7 +37,7 @@ class signer {
         try {
             $signedpdf = self::tcpdf_sign($inpdf, $certpath, $keypath, $password, $extracerts, $certinfo);
         } catch (\Throwable $e) {
-            $signedpdf = self::byte_range_sign($pdfcontent, $certs['cert'], $certs['pkey'], $certinfo);
+            $signedpdf = self::byte_range_sign($pdfcontent, $certs['cert'], $certs['pkey'], $certinfo, $password);
         }
 
         @unlink($certpath);
@@ -81,7 +81,7 @@ class signer {
         return $pdf->Output('', 'S');
     }
 
-    private static function byte_range_sign(string $pdfcontent, string $cert, string $pkey, array $certinfo): string {
+    private static function byte_range_sign(string $pdfcontent, string $cert, string $pkey, array $certinfo, string $password): string {
         $signername = $certinfo['cn'] ?? '';
         $location   = $certinfo['location'] ?? '';
         $reason     = get_config('local_certificatesign', 'signerreason') ?: 'Certificate';
@@ -142,20 +142,25 @@ class signer {
             . substr($full_pdf, $content_before_sig + $byte_range_2,
                 $byterange_end - ($content_before_sig + $byte_range_2));
 
-        $pkcs7_der = self::create_pkcs7_signature($data_to_sign, $cert, $pkey);
+        $pkcs7_der = self::create_pkcs7_signature($data_to_sign, $cert, $pkey, $password);
         $signature_hex = bin2hex($pkcs7_der);
 
         return str_replace($hex_placeholder, $signature_hex, $full_pdf);
     }
 
-    private static function create_pkcs7_signature(string $data, string $cert, string $pkey): string {
+    private static function create_pkcs7_signature(string $data, string $cert, string $pkey, string $password): string {
         $tmpdir = make_temp_directory('certificatesign');
         $infile  = $tmpdir . '/' . uniqid('sig_in_') . '.bin';
         $outfile = $tmpdir . '/' . uniqid('sig_out_') . '.p7s';
 
         file_put_contents($infile, $data);
 
-        $result = openssl_pkcs7_sign($infile, $outfile, $cert, $pkey, [], PKCS7_DETACHED | PKCS7_BINARY);
+        $key = openssl_pkey_get_private($pkey, $password);
+        if ($key === false) {
+            throw new \moodle_exception('errorreadingpfx', 'local_certificatesign');
+        }
+
+        $result = openssl_pkcs7_sign($infile, $outfile, $cert, $key, [], PKCS7_DETACHED | PKCS7_BINARY);
 
         @unlink($infile);
 

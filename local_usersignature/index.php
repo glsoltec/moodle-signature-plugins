@@ -51,6 +51,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sig_text  = required_param('signaturetext', PARAM_TEXT);
     $imagedata = required_param('imagedata', PARAM_RAW);
 
+    // A assinatura é gerada pelo navegador e não precisa ultrapassar 1 MiB.
+    if (strlen($imagedata) > 1024 * 1024) {
+        throw new \moodle_exception('invalidtext', 'local_usersignature');
+    }
+
     // Validações.
     if (!array_key_exists($font_slug, $signaturefonts)) {
         throw new \moodle_exception('invalidfont', 'local_usersignature');
@@ -63,8 +68,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!preg_match('/^data:image\/png;base64,(.+)$/s', $imagedata, $m)) {
         throw new \moodle_exception('invalidtext', 'local_usersignature');
     }
-    $png_data = base64_decode($m[1]);
+    $png_data = base64_decode($m[1], true);
     if (!$png_data || strlen($png_data) < 100) {
+        throw new \moodle_exception('invalidtext', 'local_usersignature');
+    }
+    $imageinfo = @getimagesizefromstring($png_data);
+    if (!$imageinfo || $imageinfo[2] !== IMAGETYPE_PNG || $imageinfo[0] > 2000 || $imageinfo[1] > 2000
+        || ($imageinfo[0] * $imageinfo[1]) > 4000000) {
         throw new \moodle_exception('invalidtext', 'local_usersignature');
     }
     // Garante que os dados decodificados geram uma imagem válida.
@@ -246,13 +256,14 @@ echo $OUTPUT->header();
 
     const FONTS = <?= json_encode($signaturefonts) ?>;
     const W = 340, H = 68;
+    const DEFAULT_TEXT = <?= json_encode($default_text) ?>;
 
     let currentFont = <?= json_encode($selected_font) ?>;
     let currentText = <?= json_encode($default_text) ?>;
 
     // Limpa texto para apenas letras, acentos, espaço, hífen e ponto.
     function clean(t) {
-        return (t || '').replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s\-\.]/g, '').substring(0, 60).trim() || ' ';
+        return (t || '').replace(/[^A-Za-zÀ-ÖØ-öø-ÿ\s\-\.]/g, '').substring(0, 60).trim();
     }
 
     function drawCanvas(slug, text) {
@@ -262,7 +273,7 @@ echo $OUTPUT->header();
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, W, H);
 
-        const safe = clean(text) || fullname;
+        const safe = clean(text) || DEFAULT_TEXT;
         let fs = info.size;
         ctx.font = fs + 'px ' + info.family;
         while (ctx.measureText(safe).width > W - 24 && fs > 22) {

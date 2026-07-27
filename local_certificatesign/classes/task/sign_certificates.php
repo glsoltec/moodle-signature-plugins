@@ -34,14 +34,22 @@ class sign_certificates extends \core\task\scheduled_task {
             mtrace("local_certificatesign: last run was " . (time() - $lastrun) . "s ago, interval is {$interval}min, skipping.");
             return;
         }
-        set_config('task_lastrun', time(), 'local_certificatesign');
-
-        $dbman = $DB->get_manager();
-        $logtable = new \xmldb_table('local_certificatesign_log');
-        if (!$dbman->table_exists($logtable)) {
-            mtrace('local_certificatesign: log table not found. Run upgrade.php first.');
+        $lockfactory = \core\lock\lock_config::get_lock_factory('local_certificatesign');
+        $lock = $lockfactory->get_lock('sign_certificates', 0);
+        if (!$lock) {
+            mtrace('local_certificatesign: another signing task is already running, skipping.');
             return;
         }
+
+        try {
+            set_config('task_lastrun', time(), 'local_certificatesign');
+
+            $dbman = $DB->get_manager();
+            $logtable = new \xmldb_table('local_certificatesign_log');
+            if (!$dbman->table_exists($logtable)) {
+                mtrace('local_certificatesign: log table not found. Run upgrade.php first.');
+                return;
+            }
 
         $fs = get_file_storage();
 
@@ -49,16 +57,11 @@ class sign_certificates extends \core\task\scheduled_task {
                   FROM {certificatebeautiful_issue} ci
              LEFT JOIN {local_certificatesign_log} l ON l.issueid = ci.id
                  WHERE l.id IS NULL";
-        $issues = $DB->get_records_sql($sql);
-        mtrace('local_certificatesign: found ' . count($issues) . ' pending certificate(s).');
+            $issues = $DB->get_recordset_sql($sql);
 
-        if (empty($issues)) {
-            mtrace('local_certificatesign: no pending certificates to sign.');
-            return;
-        }
-
-        $count = 0;
-        foreach ($issues as $issue) {
+            $count = 0;
+            try {
+                foreach ($issues as $issue) {
             try {
                 $cm = get_coursemodule_from_id('certificatebeautiful', $issue->cmid);
                 if (!$cm) {
@@ -81,18 +84,32 @@ class sign_certificates extends \core\task\scheduled_task {
                     continue;
                 }
 
-                $pdfcontent = $file->get_content();
-                $signedpdf = \local_certificatesign\signer::sign_pdf($pdfcontent);
-
-                $file->delete();
-                $fs->create_file_from_string([
+                $originalcontent = $file->get_content();
+                $signedpdf = \local_certificatesign\signer::sign_pdf($originalcontent);
+                $filerecord = [
                     'contextid' => $context->id,
                     'component' => 'mod_certificatebeautiful',
                     'filearea'  => 'certificate',
                     'itemid'    => $issue->userid,
                     'filepath'  => '/',
                     'filename'  => $filename,
-                ], $signedpdf);
+                ];
+
+                $deleted = false;
+                try {
+                    $file->delete();
+                    $deleted = true;
+                    $fs->create_file_from_string($filerecord, $signedpdf);
+                } catch (\Throwable $e) {
+                    if ($deleted) {
+                        try {
+                            $fs->create_file_from_string($filerecord, $originalcontent);
+                        } catch (\Throwable $restoreexception) {
+                            mtrace("local_certificatesign: could not restore issue {$issue->id}: {$restoreexception->getMessage()}");
+                        }
+                    }
+                    throw $e;
+                }
 
                 $DB->insert_record('local_certificatesign_log', (object)[
                     'issueid'     => $issue->id,
@@ -104,9 +121,15 @@ class sign_certificates extends \core\task\scheduled_task {
             } catch (\Exception $e) {
                 mtrace("local_certificatesign: error signing issue {$issue->id}: {$e->getMessage()}");
             }
-        }
+                }
+            } finally {
+                $issues->close();
+            }
 
-        mtrace("local_certificatesign: {$count} certificate(s) signed.");
+            mtrace("local_certificatesign: {$count} certificate(s) signed.");
+        } finally {
+            $lock->release();
+        }
     }
 
     public static function is_enabled(): bool {

@@ -31,6 +31,10 @@ class manager {
         return $DB->record_exists('local_certificatesign_log', ['issueid' => $issueid]);
     }
 
+    public static function is_signed(int $issueid): bool {
+        return self::already_signed($issueid);
+    }
+
     public static function sign_issue(\stdClass $issue): bool {
         global $DB;
 

@@ -8,8 +8,9 @@ class observer {
     public static function file_created(\core\event\file_created $event): void {
         global $DB;
 
+        $data = $event->get_data();
         $fs = get_file_storage();
-        $file = $fs->get_file_by_id($event->objectid);
+        $file = $fs->get_file_by_id($data['objectid']);
         if (!$file) {
             return;
         }

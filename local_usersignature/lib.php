@@ -21,7 +21,7 @@ function local_usersignature_fonts(): array {
  * Slug da fonte padrão para todos os usuários.
  */
 function local_usersignature_default_font(): string {
-    return 'autography';
+    return 'caveat';
 }
 
 /**

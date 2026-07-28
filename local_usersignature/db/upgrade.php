@@ -32,5 +32,15 @@ function xmldb_local_usersignature_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026070300, 'local', 'usersignature');
     }
 
+
+    // 2.3.0 — usa Caveat apenas para registros sem fonte definida.
+    if ($oldversion < 2026072800) {
+        $table = new xmldb_table('local_usersignature');
+        $field = new xmldb_field('font_style', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL, null, 'caveat');
+        $dbman->change_field_default($table, $field);
+        $DB->set_field('local_usersignature', 'font_style', 'caveat', ['font_style' => '']);
+        upgrade_plugin_savepoint(true, 2026072800, 'local', 'usersignature');
+    }
+
     return true;
 }

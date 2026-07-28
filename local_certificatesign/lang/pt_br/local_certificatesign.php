@@ -21,9 +21,7 @@ $string['certexpired']             = 'Este certificado está expirado!';
 $string['signerreason']            = 'Motivo da Assinatura';
 $string['signerreason_help']       = 'Motivo exibido na assinatura (ex.: "Certificado de Curso").';
 $string['autosign_enabled']        = 'Habilitar/desabilitar a tarefa agendada';
-$string['autosign_enabled_help']   = 'Quando habilitado, a tarefa agendada processa certificados pendentes e o observer assina imediatamente na emissão. Quando desabilitado, a tarefa não executa e nenhum certificado é assinado automaticamente.';
-$string['task_interval']           = 'local_certificatesign | task_interval';
-$string['task_interval_help']      = 'Define a cada quantos minutos a tarefa agendada processa os certificados pendentes. Padrão: 2 minutos.';
+$string['autosign_enabled_help']   = 'Quando habilitado, os certificados são assinados automaticamente pelo observer e pela tarefa agendada como retaguarda. Configure a frequência em Administração do site > Servidor > Tarefas agendadas.';
 
 $string['gen_heading']             = 'Deseja gerar um novo certificado autoassinado?';
 $string['gen_heading_desc']        = 'Caso não tenha um arquivo PFX/P12, o sistema pode gerar um certificado autoassinado com validade de 10 anos. Preencha os dados abaixo e ele será instalado automaticamente como certificado do plugin.';
@@ -49,3 +47,6 @@ $string['erroropenssl']            = 'Erro OpenSSL: {$a}';
 $string['invalidpdf']              = 'Conteúdo PDF inválido.';
 $string['invalidpfx']              = 'Certificado PFX/P12 inválido ou corrompido.';
 $string['notconfigured']           = 'Assinatura digital não configurada. Faça upload do certificado PFX nas configurações do plugin.';
+
+$string['errornofpdi']              = 'A FPDI não está instalada. Execute composer install em local/certificatesign.';
+$string['errorpdfparse']            = 'Não foi possível importar o PDF gerado para assinatura: {$a}';

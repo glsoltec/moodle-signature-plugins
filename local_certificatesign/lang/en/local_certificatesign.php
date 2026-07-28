@@ -21,9 +21,7 @@ $string['certexpired']             = 'This certificate has expired!';
 $string['signerreason']            = 'Signing Reason';
 $string['signerreason_help']       = 'Reason displayed in the signature (ex.: "Course Certificate").';
 $string['autosign_enabled']        = 'Enable/disable the scheduled task';
-$string['autosign_enabled_help']   = 'When enabled, the scheduled task processes pending certificates and the observer signs immediately upon issuance. When disabled, the task does not run and no certificates are signed automatically.';
-$string['task_interval']           = 'local_certificatesign | task_interval';
-$string['task_interval_help']      = 'How often the scheduled task should process pending certificates. Default: 2 minutes.';
+$string['autosign_enabled_help']   = 'When enabled, certificates are signed automatically by the observer and by the scheduled task as a fallback. Configure the task frequency in Site administration > Server > Scheduled tasks.';
 
 $string['gen_heading']             = 'Would you like to generate a new self-signed certificate?';
 $string['gen_heading_desc']        = 'If you do not have a PFX/P12 file, the system can generate a self-signed certificate valid for 10 years. Fill in the details below and it will be automatically installed as the plugin certificate.';
@@ -49,3 +47,6 @@ $string['erroropenssl']            = 'OpenSSL error: {$a}';
 $string['invalidpdf']              = 'Invalid PDF content.';
 $string['invalidpfx']              = 'Invalid or corrupted PFX/P12 certificate.';
 $string['notconfigured']           = 'Digital signing is not configured. Upload a PFX certificate in the plugin settings.';
+
+$string['errornofpdi']              = 'FPDI is not installed. Run composer install in local/certificatesign.';
+$string['errorpdfparse']            = 'Could not import the generated PDF for signing: {$a}';

@@ -25,6 +25,11 @@ function xmldb_local_certificatesign_upgrade(int $oldversion): bool {
     if ($oldversion < 2026071803) {
         upgrade_plugin_savepoint(true, 2026071803, 'local', 'certificatesign');
     }
+    if ($oldversion < 2026072701) {
+        unset_config('task_interval', 'local_certificatesign');
+        unset_config('task_lastrun', 'local_certificatesign');
+        upgrade_plugin_savepoint(true, 2026072701, 'local', 'certificatesign');
+    }
 
     return true;
 }

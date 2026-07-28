@@ -5,136 +5,159 @@ defined('MOODLE_INTERNAL') || die();
 
 class signer {
 
+    /**
+     * Digitally signs an existing PDF and returns the signed binary.
+     *
+     * The previous implementation built ByteRange/xref/trailer manually. This
+     * implementation delegates the PDF signature structure to TCPDF and uses
+     * FPDI only to import the existing generated PDF pages.
+     */
     public static function sign_pdf(string $pdfcontent): string {
+        global $CFG;
+
+        self::require_libraries();
+
         $pfx = self::get_pfx_content();
-        if ($pfx === null) {
+        $pw = (string)get_config('local_certificatesign', 'certpassword');
+        if ($pfx === null || $pw === '') {
             throw new \moodle_exception('notconfigured', 'local_certificatesign');
         }
-        $pw = get_config('local_certificatesign', 'certpassword');
-        $c = self::read_pfx($pfx, $pw);
+
+        $certs = self::read_pfx($pfx, $pw);
         $info = self::get_cert_info($pfx, $pw);
+        $reason = get_config('local_certificatesign', 'signerreason') ?: 'Certificate';
 
-        $pdf = str_replace("\r\n", "\n", $pdfcontent);
-        $pdf = rtrim($pdf) . "\n";
+        $tmpdir = make_temp_directory('local_certificatesign');
+        $certfile = tempnam($tmpdir, 'cert_');
+        $keyfile = tempnam($tmpdir, 'key_');
+        $extrafile = tempnam($tmpdir, 'extra_');
 
-        $maxhex = 25000;
-        $ph = str_repeat('0', $maxhex);
-        $objnum = 999999;
-        $name = self::pesc($info['cn'] ?? '');
-        $loc  = self::pesc($info['location'] ?? '');
-        $reason = self::pesc(get_config('local_certificatesign', 'signerreason') ?: 'Certificate');
+        try {
+            file_put_contents($certfile, $certs['cert']);
+            file_put_contents($keyfile, $certs['pkey']);
 
-        $sig = "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached";
-        if ($name) { $sig .= " /Name ($name)"; }
-        if ($loc)  { $sig .= " /Location ($loc)"; }
-        if ($reason) { $sig .= " /Reason ($reason)"; }
-        $sig .= " /M (D:" . date('YmdHisP') . ")";
-        $sig .= " /ByteRange [0 %d %d %d]";
-        $sig .= " /Contents <$ph> >>";
+            $extracerts = '';
+            if (!empty($certs['extracerts']) && is_array($certs['extracerts'])) {
+                $extracerts = implode("\n", $certs['extracerts']);
+            }
+            file_put_contents($extrafile, $extracerts);
 
-        $before = strlen($pdf);
-        $scount = strlen($objnum . " 0 obj\n" . $sig . "\nendobj\n") + 2;
+            $pdf = new \setasign\Fpdi\Tcpdf\Fpdi(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+            $pdf->SetAutoPageBreak(false, 0);
+            $pdf->setFontSubsetting(false);
+            $pdf->SetCreator('Moodle local_certificatesign');
+            $pdf->SetAuthor($info['cn'] ?? '');
+            $pdf->SetTitle('Signed certificate');
 
-        $sized = $objnum . " 0 obj\n"
-            . sprintf($sig, $before, $before + $scount + $maxhex / 2, 0)
-            . "\nendobj\n";
+            $signatureinfo = [
+                'Name' => $info['cn'] ?? '',
+                'Location' => $info['location'] ?? '',
+                'Reason' => $reason,
+                'ContactInfo' => '',
+            ];
 
-        $no = $objnum + 1;
-        $xo = strlen($pdf) + strlen($sized) + 1;
+            $pdf->setSignature(
+                'file://' . $certfile,
+                'file://' . $keyfile,
+                '',
+                $extracerts !== '' ? 'file://' . $extrafile : '',
+                2,
+                $signatureinfo
+            );
 
-        $tobj = "$no 0 obj\n<< /Type /Catalog /AcroForm << /Fields [$objnum 0 R] /SigFlags 3 >> /Perms << /DocMDP << /P /SigQ /V 2 /Reference [{/Type /SigRef /TransformMethod /DocMDP /TransformParams << /P /SigQ /V /2 /Type /TransformParams >>}] >> >> >>\nendobj\n";
+            try {
+                $pagecount = $pdf->setSourceFile(\setasign\Fpdi\PdfParser\StreamReader::createByString($pdfcontent));
+            } catch (\Throwable $e) {
+                throw new \moodle_exception('errorpdfparse', 'local_certificatesign', '', $e->getMessage());
+            }
 
-        $xr = "xref\n0 0\n{$objnum} 1\n" . sprintf("%010d %05d n \n", $before + 1, 0)
-            . "$no 1\n" . sprintf("%010d %05d n \n", $before + 1 + strlen($sized) + 1, 0);
+            for ($page = 1; $page <= $pagecount; $page++) {
+                $template = $pdf->importPage($page);
+                $size = $pdf->getTemplateSize($template);
+                $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
+                $pdf->AddPage($orientation, [$size['width'], $size['height']]);
+                $pdf->useTemplate($template, 0, 0, $size['width'], $size['height'], true);
+            }
 
-        $tr = "trailer\n<< /Size $no /Root $no 0 R >>\nstartxref\n$xo\n%%EOF";
-
-        $full = $pdf . "\n" . $sized . $tobj . $xr . $tr;
-        $be = $before + $scount + $maxhex / 2;
-
-        $sign = substr($full, 0, $before)
-            . substr($full, $before + $scount, $be - ($before + $scount));
-
-        $pkcs7 = self::make_pkcs7($sign, $c['cert'], $c['pkey'], $pw);
-
-        return str_replace($ph, bin2hex($pkcs7), $full);
+            return $pdf->Output('', 'S');
+        } finally {
+            foreach ([$certfile, $keyfile, $extrafile] as $file) {
+                if ($file && file_exists($file)) {
+                    @unlink($file);
+                }
+            }
+        }
     }
 
-    private static function make_pkcs7(string $data, string $cert, string $pkey, string $pw): string {
-        $td = sys_get_temp_dir();
-        $in  = tempnam($td, 'csign_');
-        $out = tempnam($td, 'csign_');
+    private static function require_libraries(): void {
+        global $CFG;
 
-        file_put_contents($in, $data);
-
-        $key = openssl_pkey_get_private($pkey, $pw);
-        if ($key === false) {
-            @unlink($in); @unlink($out);
-            throw new \moodle_exception('errorreadingpfx', 'local_certificatesign');
+        $tcpdf = $CFG->libdir . '/tcpdf/tcpdf.php';
+        if (is_readable($tcpdf)) {
+            require_once($tcpdf);
+        } else {
+            require_once($CFG->libdir . '/pdflib.php');
         }
 
-        $r = openssl_pkcs7_sign($in, $out, $cert, $key, [], PKCS7_DETACHED);
-
-        @unlink($in);
-
-        if (!$r) {
-            @unlink($out);
-            $err = openssl_error_string();
-            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', $err ?: '');
+        $autoload = __DIR__ . '/../vendor/autoload.php';
+        if (is_readable($autoload)) {
+            require_once($autoload);
         }
 
-        $raw = file_get_contents($out);
-        @unlink($out);
-
-        if ($raw === false || strlen($raw) < 10) {
-            throw new \moodle_exception('erroropenssl', 'local_certificatesign');
+        if (!class_exists('\\setasign\\Fpdi\\Tcpdf\\Fpdi')) {
+            throw new \moodle_exception('errornofpdi', 'local_certificatesign');
         }
-
-        $raw = str_replace(["\r\n", "\r"], "\n", $raw);
-        if (preg_match('/-----BEGIN PKCS7-----.*?\n(.+)\n-----END PKCS7-----/s', $raw, $m)) {
-            return base64_decode(str_replace("\n", '', $m[1]));
-        }
-
-        if (bin2hex(substr($raw, 0, 1)) === '30') {
-            return $raw;
-        }
-
-        throw new \moodle_exception('erroropenssl', 'local_certificatesign');
     }
 
     public static function get_pfx_content(): ?string {
         $fs = get_file_storage();
-        $f = $fs->get_area_files(\context_system::instance()->id, 'local_certificatesign', 'pfxfile', 0, 'id DESC', false);
-        return empty($f) ? null : reset($f)->get_content();
+        $files = $fs->get_area_files(\context_system::instance()->id, 'local_certificatesign', 'pfxfile', 0, 'id DESC', false);
+        return empty($files) ? null : reset($files)->get_content();
     }
 
     public static function read_pfx(string $pfx, string $pw): array {
-        $c = [];
-        if (!openssl_pkcs12_read($pfx, $c, $pw)) {
+        $certs = [];
+        if (!openssl_pkcs12_read($pfx, $certs, $pw)) {
             throw new \moodle_exception('errorreadingpfx', 'local_certificatesign');
         }
-        return $c;
+        return $certs;
     }
 
     public static function get_cert_info(string $pfx, string $pw): array {
-        $c = self::read_pfx($pfx, $pw);
-        $d = openssl_x509_parse($c['cert']);
-        $cn = $d['subject']['CN'] ?? '';
-        $l = '';
-        if (!empty($d['subject']['L'])) { $l = $d['subject']['L']; }
-        elseif (!empty($d['subject']['ST'])) { $l = $d['subject']['ST']; }
-        if (!empty($d['subject']['O'])) { $l = $l ? "$l - {$d['subject']['O']}" : $d['subject']['O']; }
+        $certs = self::read_pfx($pfx, $pw);
+        $parsed = openssl_x509_parse($certs['cert']);
+        if ($parsed === false) {
+            throw new \moodle_exception('invalidpfx', 'local_certificatesign');
+        }
+
+        $location = '';
+        if (!empty($parsed['subject']['L'])) {
+            $location = $parsed['subject']['L'];
+        } else if (!empty($parsed['subject']['ST'])) {
+            $location = $parsed['subject']['ST'];
+        }
+        if (!empty($parsed['subject']['O'])) {
+            $location = $location ? $location . ' - ' . $parsed['subject']['O'] : $parsed['subject']['O'];
+        }
+
         return [
-            'cn' => $cn, 'location' => $l, 'org' => $d['subject']['O'] ?? '',
-            'validfrom' => $d['validFrom_time_t'] ?? 0, 'validto' => $d['validTo_time_t'] ?? 0,
-            'issuer' => $d['issuer']['CN'] ?? '',
-            'fingerprint' => strtoupper(openssl_x509_fingerprint($c['cert'])),
+            'cn' => $parsed['subject']['CN'] ?? '',
+            'location' => $location,
+            'org' => $parsed['subject']['O'] ?? '',
+            'validfrom' => $parsed['validFrom_time_t'] ?? 0,
+            'validto' => $parsed['validTo_time_t'] ?? 0,
+            'issuer' => $parsed['issuer']['CN'] ?? '',
+            'fingerprint' => strtoupper(openssl_x509_fingerprint($certs['cert'])),
         ];
     }
 
     public static function validate_password(string $password): ?string {
         $pfx = self::get_pfx_content();
-        if ($pfx === null) { return null; }
+        if ($pfx === null) {
+            return null;
+        }
         try {
             self::read_pfx($pfx, $password);
             return null;
@@ -143,7 +166,60 @@ class signer {
         }
     }
 
-    private static function pesc(string $v): string {
-        return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $v);
+    public static function generate_self_signed(string $cn, string $org, string $country, string $password): string {
+        $cn = trim($cn);
+        $org = trim($org);
+        $country = strtoupper(trim($country));
+
+        if ($cn === '') {
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', 'Common Name is required.');
+        }
+        if ($country !== '' && !preg_match('/^[A-Z]{2}$/', $country)) {
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', 'Country must use a 2-letter ISO code.');
+        }
+
+        $dn = ['commonName' => $cn];
+        if ($org !== '') {
+            $dn['organizationName'] = $org;
+        }
+        if ($country !== '') {
+            $dn['countryName'] = $country;
+        }
+
+        $config = [
+            'private_key_type' => OPENSSL_KEYTYPE_RSA,
+            'private_key_bits' => 2048,
+            'digest_alg' => 'sha256',
+        ];
+
+        $privatekey = openssl_pkey_new($config);
+        if ($privatekey === false) {
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', self::openssl_errors());
+        }
+
+        $csr = openssl_csr_new($dn, $privatekey, $config);
+        if ($csr === false) {
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', self::openssl_errors());
+        }
+
+        $certificate = openssl_csr_sign($csr, null, $privatekey, 3650, $config);
+        if ($certificate === false) {
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', self::openssl_errors());
+        }
+
+        $pfx = '';
+        if (!openssl_pkcs12_export($certificate, $pfx, $privatekey, $password, ['friendly_name' => $cn])) {
+            throw new \moodle_exception('erroropenssl', 'local_certificatesign', '', self::openssl_errors());
+        }
+
+        return $pfx;
+    }
+
+    private static function openssl_errors(): string {
+        $errors = [];
+        while ($error = openssl_error_string()) {
+            $errors[] = $error;
+        }
+        return implode('; ', $errors) ?: 'Unknown OpenSSL error';
     }
 }

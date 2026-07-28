@@ -1,0 +1,8 @@
+{
+  "name": "glsoltec/moodle-local-certificatesign",
+  "description": "Digital PDF signing support for Moodle certificatebeautiful certificates.",
+  "type": "moodle-local",
+  "require": {
+    "setasign/fpdi": "^2.6"
+  }
+}

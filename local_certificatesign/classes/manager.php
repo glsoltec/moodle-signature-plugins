@@ -70,10 +70,7 @@ class manager {
         if (!self::log_table_exists()) {
             return false;
         }
-        if (!self::already_signed($issueid)) {
-            return false;
-        }
-        return self::is_signed_file_exists($issueid);
+        return self::already_signed($issueid);
     }
 
     public static function is_signed_file_exists(int $issueid): bool {

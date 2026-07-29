@@ -31,6 +31,41 @@ class manager {
         return $DB->record_exists('local_certificatesign_log', ['issueid' => $issueid]);
     }
 
+    public static function audit_access(\stdClass $issue, string $action): void {
+        global $DB;
+
+        try {
+            $allowed = ['view', 'download', 'token_view', 'pending'];
+            if (!in_array($action, $allowed, true)) {
+                return;
+            }
+
+            $userid = (int)($issue->userid ?? 0);
+            $issueid = (int)($issue->id ?? 0);
+            $cmid = (int)($issue->cmid ?? 0);
+
+            if (!$userid || !$issueid || !$cmid) {
+                return;
+            }
+
+            $cm = get_coursemodule_from_id('certificatebeautiful', $cmid);
+            $courseid = $cm ? (int)$cm->course : 0;
+
+            $DB->insert_record('local_certificatesign_audit', (object)[
+                'userid' => $userid,
+                'issueid' => $issueid,
+                'cmid' => $cmid,
+                'courseid' => $courseid,
+                'action' => $action,
+                'timecreated' => time(),
+                'ipaddress' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'useragent' => substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255),
+            ]);
+        } catch (\Throwable $e) {
+            debugging('local_certificatesign: audit_access failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
     public static function is_signed(int $issueid): bool {
         return self::already_signed($issueid);
     }

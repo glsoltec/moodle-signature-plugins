@@ -40,7 +40,19 @@ $string['gen_success']             = 'Self-signed certificate generated and inst
 $string['task_sign']               = 'Sign pending certificates';
 $string['signature_appended']      = 'Digitally signed certificate.';
 
-$string['privacy:metadata']        = 'This plugin does not store personal data directly.';
+$string['privacy:metadata']        = 'The Digital Certificate Signer plugin stores audit access records for certificate viewing and download events.';
+$string['privacy:metadata:local_certificatesign_audit'] = 'Audit log of certificate access events';
+$string['privacy:metadata:local_certificatesign_audit:userid'] = 'The user who accessed the certificate';
+$string['privacy:metadata:local_certificatesign_audit:issueid'] = 'The certificate issue record identifier';
+$string['privacy:metadata:local_certificatesign_audit:cmid'] = 'The course module identifier';
+$string['privacy:metadata:local_certificatesign_audit:courseid'] = 'The course identifier';
+$string['privacy:metadata:local_certificatesign_audit:action'] = 'The action performed (view, download, token_view, pending)';
+$string['privacy:metadata:local_certificatesign_audit:timecreated'] = 'The time the access occurred';
+$string['privacy:metadata:local_certificatesign_audit:ipaddress'] = 'The IP address of the user';
+$string['privacy:metadata:local_certificatesign_audit:useragent'] = 'The browser user agent string';
+$string['privacy:metadata:local_certificatesign_log'] = 'Log of digitally signed certificate issues';
+$string['privacy:metadata:local_certificatesign_log:issueid'] = 'The certificate issue record identifier';
+$string['privacy:metadata:local_certificatesign_log:timecreated'] = 'The time the digital signature was applied';
 
 $string['errorreadingpfx']         = 'Error reading the PFX/P12 certificate. Check the password.';
 $string['erroropenssl']            = 'OpenSSL error: {$a}';

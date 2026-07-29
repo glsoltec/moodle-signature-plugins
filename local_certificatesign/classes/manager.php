@@ -67,6 +67,9 @@ class manager {
     }
 
     public static function is_signed(int $issueid): bool {
+        if (!self::log_table_exists()) {
+            return false;
+        }
         return self::already_signed($issueid);
     }
 

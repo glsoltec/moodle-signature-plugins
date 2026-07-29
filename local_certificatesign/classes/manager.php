@@ -160,6 +160,9 @@ class manager {
             $DB->insert_record('local_certificatesign_log', (object)[
                 'issueid' => $issue->id,
                 'timecreated' => time(),
+                'email_sent' => 0,
+                'email_time' => 0,
+                'email_attempts' => 0,
             ]);
 
             return true;

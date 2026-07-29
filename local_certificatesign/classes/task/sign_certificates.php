@@ -44,6 +44,7 @@ class sign_certificates extends \core\task\scheduled_task {
                         if (\local_certificatesign\manager::sign_issue($issue)) {
                             $count++;
                             mtrace("local_certificatesign: signed issue {$issue->id} ({$issue->code}.pdf)");
+                            self::send_release_email($issue);
                         }
                     } catch (\Throwable $e) {
                         mtrace("local_certificatesign: error signing issue {$issue->id}: {$e->getMessage()}");
@@ -57,5 +58,62 @@ class sign_certificates extends \core\task\scheduled_task {
         } finally {
             $lock->release();
         }
+    }
+
+    private static function send_release_email(\stdClass $issue): void {
+        global $DB;
+
+        $logrecord = $DB->get_record('local_certificatesign_log', ['issueid' => $issue->id]);
+        if (!$logrecord || $logrecord->email_sent) {
+            return;
+        }
+
+        $user = \core_user::get_user($issue->userid, '*', IGNORE_MISSING);
+        if (!$user || $user->deleted || $user->suspended) {
+            return;
+        }
+
+        $cm = get_coursemodule_from_id('certificatebeautiful', $issue->cmid, 0, false, IGNORE_MISSING);
+        $course = $cm ? $DB->get_record('course', ['id' => $cm->course], '*', IGNORE_MISSING) : null;
+        $certificatebeautiful = $cm ? $DB->get_record('certificatebeautiful', ['id' => $cm->instance], '*', IGNORE_MISSING) : null;
+
+        if (!$course || !$certificatebeautiful || empty($certificatebeautiful->notifyuser)) {
+            return;
+        }
+
+        $data = (object)[
+            'fullname' => fullname($user),
+            'certificatename' => format_string($certificatebeautiful->name),
+            'coursename' => format_string($course->fullname),
+            'url' => (new \moodle_url('/mod/certificatebeautiful/view.php', ['id' => $cm->id]))->out(false),
+        ];
+
+        $supportuser = \core_user::get_support_user();
+        $subject = get_string('notification_subject', 'certificatebeautiful', $data);
+        $messagehtml = get_string('notification_body', 'certificatebeautiful', $data);
+        $messageplain = html_to_text($messagehtml);
+
+        $update = (object)[
+            'id' => $logrecord->id,
+            'email_attempts' => $logrecord->email_attempts + 1,
+        ];
+
+        try {
+            $sent = email_to_user($user, $supportuser, $subject, $messageplain, $messagehtml);
+            if ($sent) {
+                $update->email_sent = 1;
+                $update->email_time = time();
+                $update->email_last_error = null;
+                mtrace("local_certificatesign: release email sent to user {$user->id} for issue {$issue->id}");
+            } else {
+                $update->email_last_error = 'email_to_user returned false';
+                mtrace("local_certificatesign: email_to_user failed for issue {$issue->id}");
+            }
+        } catch (\Throwable $e) {
+            $update->email_last_error = substr($e->getMessage(), 0, 255);
+            mtrace("local_certificatesign: email error for issue {$issue->id}: {$e->getMessage()}");
+        }
+
+        $DB->update_record('local_certificatesign_log', $update);
     }
 }

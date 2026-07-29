@@ -70,7 +70,42 @@ class manager {
         if (!self::log_table_exists()) {
             return false;
         }
-        return self::already_signed($issueid);
+        if (!self::already_signed($issueid)) {
+            return false;
+        }
+        return self::is_signed_file_exists($issueid);
+    }
+
+    public static function is_signed_file_exists(int $issueid): bool {
+        global $DB;
+
+        $issue = $DB->get_record('certificatebeautiful_issue', ['id' => $issueid]);
+        if (!$issue) {
+            return false;
+        }
+
+        $cm = get_coursemodule_from_id('certificatebeautiful', $issue->cmid, 0, false, IGNORE_MISSING);
+        if (!$cm) {
+            return false;
+        }
+
+        $context = \context_module::instance($cm->id, IGNORE_MISSING);
+        if (!$context) {
+            return false;
+        }
+
+        $fs = get_file_storage();
+        $file = $fs->get_file($context->id, 'mod_certificatebeautiful', 'certificate', $issue->userid, '/', $issue->code . '.pdf');
+        if (!$file) {
+            return false;
+        }
+
+        $content = $file->get_content();
+        if ($content === false || $content === '') {
+            return false;
+        }
+
+        return strpos($content, '/ByteRange') !== false;
     }
 
     public static function sign_issue(\stdClass $issue): bool {

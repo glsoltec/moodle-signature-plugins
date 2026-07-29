@@ -40,19 +40,7 @@ $string['gen_success']             = 'Certificado autoassinado gerado e instalad
 $string['task_sign']               = 'Assinar certificados pendentes';
 $string['signature_appended']      = 'Certificado assinado digitalmente.';
 
-$string['privacy:metadata']        = 'O plugin de Assinatura Digital armazena registros de auditoria de acesso a certificados.';
-$string['privacy:metadata:local_certificatesign_audit'] = 'Registro de auditoria de acesso a certificados';
-$string['privacy:metadata:local_certificatesign_audit:userid'] = 'Usuário que acessou o certificado';
-$string['privacy:metadata:local_certificatesign_audit:issueid'] = 'Identificador da emissão do certificado';
-$string['privacy:metadata:local_certificatesign_audit:cmid'] = 'Identificador do módulo do curso';
-$string['privacy:metadata:local_certificatesign_audit:courseid'] = 'Identificador do curso';
-$string['privacy:metadata:local_certificatesign_audit:action'] = 'Ação realizada (view, download, token_view, pending)';
-$string['privacy:metadata:local_certificatesign_audit:timecreated'] = 'Data e hora do acesso';
-$string['privacy:metadata:local_certificatesign_audit:ipaddress'] = 'Endereço IP do usuário';
-$string['privacy:metadata:local_certificatesign_audit:useragent'] = 'User agent do navegador';
-$string['privacy:metadata:local_certificatesign_log'] = 'Registro de certificados assinados digitalmente';
-$string['privacy:metadata:local_certificatesign_log:issueid'] = 'Identificador da emissão do certificado';
-$string['privacy:metadata:local_certificatesign_log:timecreated'] = 'Data e hora da assinatura digital';
+$string['privacy:metadata']        = 'Este plugin não armazena dados pessoais diretamente.';
 
 $string['errorreadingpfx']         = 'Erro ao ler o certificado PFX/P12. Verifique a senha.';
 $string['erroropenssl']            = 'Erro OpenSSL: {$a}';

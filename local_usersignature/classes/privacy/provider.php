@@ -50,11 +50,12 @@ class provider implements
         $collection->add_database_table(
             'local_usersignature',
             [
-                'userid'         => 'privacy:metadata:local_usersignature:userid',
-                'font_style'     => 'privacy:metadata:local_usersignature:font_style',
-                'signature_text' => 'privacy:metadata:local_usersignature:signature_text',
-                'timecreated'    => 'privacy:metadata:local_usersignature:timecreated',
-                'timemodified'   => 'privacy:metadata:local_usersignature:timemodified',
+                'userid'          => 'privacy:metadata:local_usersignature:userid',
+                'font_style'      => 'privacy:metadata:local_usersignature:font_style',
+                'signature_text'  => 'privacy:metadata:local_usersignature:signature_text',
+                'signature_source'=> 'privacy:metadata:local_usersignature:signature_source',
+                'timecreated'     => 'privacy:metadata:local_usersignature:timecreated',
+                'timemodified'    => 'privacy:metadata:local_usersignature:timemodified',
             ],
             'privacy:metadata:local_usersignature'
         );
@@ -131,10 +132,11 @@ class provider implements
             }
 
             $data = (object) [
-                'font_style'     => $record->font_style,
-                'signature_text' => $record->signature_text,
-                'timecreated'    => \core_privacy\local\request\transform::datetime($record->timecreated),
-                'timemodified'   => \core_privacy\local\request\transform::datetime($record->timemodified),
+                'font_style'      => $record->font_style,
+                'signature_text'  => $record->signature_text,
+                'signature_source'=> $record->signature_source ?? 'font',
+                'timecreated'     => \core_privacy\local\request\transform::datetime($record->timecreated),
+                'timemodified'    => \core_privacy\local\request\transform::datetime($record->timemodified),
             ];
 
             $subcontext = [get_string('pluginname', 'local_usersignature')];

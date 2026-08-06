@@ -7,6 +7,7 @@
         <FIELD NAME="userid"         TYPE="int"  LENGTH="10" NOTNULL="true"/>
         <FIELD NAME="font_style"     TYPE="char" LENGTH="50"  NOTNULL="true" DEFAULT="caveat"/>
         <FIELD NAME="signature_text" TYPE="char" LENGTH="100" NOTNULL="true" DEFAULT=""/>
+        <FIELD NAME="signature_source" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="font"/>
         <FIELD NAME="timecreated"    TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0"/>
         <FIELD NAME="timemodified"   TYPE="int"  LENGTH="10" NOTNULL="true" DEFAULT="0"/>
       </FIELDS>

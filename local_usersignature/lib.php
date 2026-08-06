@@ -28,16 +28,10 @@ function local_usersignature_default_font(): string {
  * Retorna a URL pública da assinatura do usuário, ou null se não existir.
  */
 function local_usersignature_get_signature_url(int $userid): ?\moodle_url {
-    $context = \core\context\user::instance($userid, IGNORE_MISSING);
-    if (!$context) {
+    $file = local_usersignature_get_active_file($userid);
+    if (!$file) {
         return null;
     }
-    $fs    = get_file_storage();
-    $files = $fs->get_area_files($context->id, 'local_usersignature', 'signature', 0, 'timemodified DESC', false);
-    if (empty($files)) {
-        return null;
-    }
-    $file = reset($files);
     return \moodle_url::make_pluginfile_url(
         $file->get_contextid(),
         $file->get_component(),
@@ -49,19 +43,45 @@ function local_usersignature_get_signature_url(int $userid): ?\moodle_url {
 }
 
 /**
- * Retorna metadados da assinatura (estilo de fonte e texto).
+ * Retorna metadados da assinatura (estilo de fonte, texto e origem).
  */
 function local_usersignature_get_signature_meta(int $userid): array {
     global $DB;
     $record = $DB->get_record('local_usersignature', ['userid' => $userid]);
     if (!$record) {
-        return ['font' => '', 'text' => '', 'timemodified' => 0];
+        return ['font' => '', 'text' => '', 'source' => 'font', 'timemodified' => 0];
     }
     return [
         'font'         => $record->font_style,
         'text'         => $record->signature_text,
+        'source'       => $record->signature_source ?? 'font',
         'timemodified' => (int) $record->timemodified,
     ];
+}
+
+/**
+ * Retorna o arquivo ativo da assinatura conforme o source (fonte ou imagem).
+ *
+ * - 'image': usa imported.png
+ * - 'font' (padrão): usa signature.png (gerado por canvas/fonte)
+ * Com fallback seguro: se o source aponta para arquivo inexistente, tenta o outro.
+ */
+function local_usersignature_get_active_file(int $userid): ?\stored_file {
+    $fs = get_file_storage();
+    $context = \core\context\user::instance($userid, IGNORE_MISSING);
+    if (!$context) {
+        return null;
+    }
+    $meta = local_usersignature_get_signature_meta($userid);
+    $filed = $meta['source'] === 'image' ? 'imported.png' : 'signature.png';
+
+    $file = $fs->get_file($context->id, 'local_usersignature', 'signature', 0, '/', $filed);
+    if ($file) {
+        return $file;
+    }
+    // Fallback: tenta o outro arquivo.
+    $fallback = $filed === 'imported.png' ? 'signature.png' : 'imported.png';
+    return $fs->get_file($context->id, 'local_usersignature', 'signature', 0, '/', $fallback);
 }
 
 /**
@@ -75,39 +95,129 @@ function local_usersignature_get_signature_meta(int $userid): array {
  * @return string Data URI, ou '' se não houver assinatura.
  */
 function local_usersignature_get_signature_datauri(int $userid): string {
-    $context = \core\context\user::instance($userid, IGNORE_MISSING);
-    if (!$context) {
+    $file = local_usersignature_get_active_file($userid);
+    if (!$file) {
         return '';
     }
-    $fs    = get_file_storage();
-    $files = $fs->get_area_files($context->id, 'local_usersignature', 'signature', 0, 'timemodified DESC', false);
-    if (empty($files)) {
-        return '';
+    $mimetype = $file->get_mimetype();
+    if ($mimetype !== 'image/png' && $mimetype !== 'image/jpeg' && $mimetype !== 'image/webp') {
+        $mimetype = 'image/png';
     }
-    $file = reset($files);
-    return 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content());
+    return 'data:' . $mimetype . ';base64,' . base64_encode($file->get_content());
 }
 
 /**
  * Salva ou atualiza metadados da assinatura.
+ *
+ * @param int $userid
+ * @param string $font Slug da fonte (vazio quando import por imagem).
+ * @param string $text Texto da assinatura.
+ * @param string $source 'font' ou 'image'.
  */
-function local_usersignature_save_meta(int $userid, string $font, string $text): void {
+function local_usersignature_save_meta(int $userid, string $font, string $text, string $source = 'font'): void {
     global $DB;
+    if (!in_array($source, ['font', 'image'], true)) {
+        $source = 'font';
+    }
     $existing = $DB->get_record('local_usersignature', ['userid' => $userid]);
     $now = time();
     if ($existing) {
-        $existing->font_style     = $font;
-        $existing->signature_text = $text;
-        $existing->timemodified   = $now;
+        $existing->font_style        = $font;
+        $existing->signature_text    = $text;
+        $existing->signature_source  = $source;
+        $existing->timemodified      = $now;
         $DB->update_record('local_usersignature', $existing);
     } else {
         $DB->insert_record('local_usersignature', (object)[
-            'userid'         => $userid,
-            'font_style'     => $font,
-            'signature_text' => $text,
-            'timecreated'    => $now,
-            'timemodified'   => $now,
+            'userid'          => $userid,
+            'font_style'      => $font,
+            'signature_text'  => $text,
+            'signature_source'=> $source,
+            'timecreated'     => $now,
+            'timemodified'    => $now,
         ]);
+    }
+}
+
+/**
+ * Salva uma imagem (PNG) importada como assinatura do usuário.
+ * Armazena como enviada (sem redimensionar); a renderização do certificado
+ * limita a altura via max-height. Passa a origem para 'image'.
+ */
+function local_usersignature_save_imported_image(int $userid, string $pngdata): void {
+    $context = \core\context\user::instance($userid, IGNORE_MISSING);
+    if (!$context) {
+        throw new \moodle_exception('invaliduser', 'local_usersignature');
+    }
+    $fs = get_file_storage();
+    // Substitui o arquivo importado anterior (mantém signature.png intacto).
+    $existed = $fs->get_file($context->id, 'local_usersignature', 'signature', 0, '/', 'imported.png');
+    if ($existed) {
+        $existed->delete();
+    }
+    $fs->create_file_from_string([
+        'contextid' => $context->id,
+        'component' => 'local_usersignature',
+        'filearea'  => 'signature',
+        'itemid'    => 0,
+        'filepath'  => '/',
+        'filename'  => 'imported.png',
+    ], $pngdata);
+
+    $meta = local_usersignature_get_signature_meta($userid);
+    local_usersignature_save_meta($userid, $meta['font'] ?: '', $meta['text'] ?: '', 'image');
+}
+
+/**
+ * Converte dados de imagem (PNG/JPEG/WebP) para PNG, mantendo transparência.
+ * Usada para normalizar a imagem importada antes de salvar.
+ *
+ * @param string $imagedata Dados binários da imagem original.
+ * @return string Dados binários em PNG.
+ * @throws \moodle_exception
+ */
+function local_usersignature_to_png(string $imagedata): string {
+    $src = @imagecreatefromstring($imagedata);
+    if (!$src) {
+        throw new \moodle_exception('invalidimage', 'local_usersignature');
+    }
+    $width  = imagesx($src);
+    $height = imagesy($src);
+
+    $png = imagecreatetruecolor($width, $height);
+    imagealphablending($png, false);
+    imagesavealpha($png, true);
+    $transparent = imagecolorallocatealpha($png, 0, 0, 0, 127);
+    imagefill($png, 0, 0, $transparent);
+    imagecopy($png, $src, 0, 0, 0, 0, $width, $height);
+    imagedestroy($src);
+
+    ob_start();
+    imagepng($png, null, 9);
+    $out = ob_get_clean();
+    imagedestroy($png);
+
+    return $out;
+}
+
+/**
+ * Remove a imagem importada, voltando o source para 'font' (se houver fonte).
+ */
+function local_usersignature_remove_imported_image(int $userid): void {
+    global $DB;
+    $context = \core\context\user::instance($userid, IGNORE_MISSING);
+    if ($context) {
+        $fs = get_file_storage();
+        $file = $fs->get_file($context->id, 'local_usersignature', 'signature', 0, '/', 'imported.png');
+        if ($file) {
+            $file->delete();
+        }
+    }
+    $existing = $DB->get_record('local_usersignature', ['userid' => $userid]);
+    if ($existing) {
+        $existing->signature_source = 'font';
+        $existing->timemodified     = time();
+        $DB->update_record('local_usersignature', $existing);
     }
 }
 

@@ -79,9 +79,11 @@ function local_usersignature_get_active_file(int $userid): ?\stored_file {
     if ($file) {
         return $file;
     }
-    // Fallback: tenta o outro arquivo.
+    // Fallback: tenta o outro arquivo. get_file() retorna false (não null)
+    // quando não encontra; converter para null respeita a assinatura ?stored_file.
     $fallback = $filed === 'imported.png' ? 'signature.png' : 'imported.png';
-    return $fs->get_file($context->id, 'local_usersignature', 'signature', 0, '/', $fallback);
+    $file = $fs->get_file($context->id, 'local_usersignature', 'signature', 0, '/', $fallback);
+    return $file ?: null;
 }
 
 /**
